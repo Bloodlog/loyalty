@@ -1,0 +1,76 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:17.2
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U gopher -d gophermart" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: "P@ssw0rd"
+      PGDATA: "/var/lib/postgresql/data"
+    volumes:
+      - "./db/init:/docker-entrypoint-initdb.d"
+      - "gophermart-postgres:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+    networks:
+      - gophermart
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
+      PGADMIN_DEFAULT_PASSWORD: strong-password
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - gophermart
+
+  app:
+    build:
+      context: .
+      dockerfile: deployments/server.Dockerfile
+    container_name: app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - gophermart
+    environment:
+      DATABASE_URI: postgresql://gopher:gopher@postgres:5432/gophermart
+      RUN_ADDRESS: 0.0.0.0:8080
+      ACCRUAL_SYSTEM_ADDRESS: http://accrual:8080
+
+  accrual:
+    build:
+      context: .
+      dockerfile: deployments/accrual.Dockerfile
+    container_name: accrual_container
+    depends_on:
+      - app
+    ports:
+      - "8081:8080"
+    networks:
+      - gophermart
+    environment:
+      DATABASE_URI: postgresql://accrual:accrual@postgres:5432/accrual
+      RUN_ADDRESS: 0.0.0.0:8080
+
+volumes:
+  gophermart-postgres:
+  pgadmin-data:
+
+networks:
+  gophermart:
+    driver: bridge
