@@ -5,9 +5,9 @@ import (
 )
 
 type Withdraw struct {
-	ID        int
-	UserID    int64
-	OrderId   int
-	Withdraw  float64
 	CreatedAt time.Time
+	Withdraw  float64
+	UserID    int64
+	ID        int
+	OrderID   int
 }

@@ -23,9 +23,9 @@ type withdrawRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func NewWithdrawRepository(DB *pgxpool.Pool) WithdrawRepositoryInterface {
+func NewWithdrawRepository(db *pgxpool.Pool) WithdrawRepositoryInterface {
 	return &withdrawRepository{
-		Pool: DB,
+		Pool: db,
 	}
 }
 
@@ -35,13 +35,13 @@ func (r *withdrawRepository) Store(ctx context.Context, withdraw entities.Withdr
 		VALUES ($1, $2, $3)
 	`
 
-	_, err := r.Pool.Exec(ctx, query, withdraw.OrderId, withdraw.UserID, withdraw.Withdraw)
+	_, err := r.Pool.Exec(ctx, query, withdraw.OrderID, withdraw.UserID, withdraw.Withdraw)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 			err = apperrors.ErrDuplicateOrderID
 		}
-		return err
+		return fmt.Errorf("failed to save withdraw: %w", err)
 	}
 
 	return nil
@@ -69,7 +69,7 @@ func (r *withdrawRepository) GetByUserID(ctx context.Context, userID int) ([]ent
 			ORDER BY created_at ASC`
 	rows, err := r.Pool.Query(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get withdraw: %w", err)
 	}
 	defer rows.Close()
 
@@ -77,18 +77,18 @@ func (r *withdrawRepository) GetByUserID(ctx context.Context, userID int) ([]ent
 	for rows.Next() {
 		var withdraw entities.Withdraw
 		err := rows.Scan(
-			&withdraw.OrderId,
+			&withdraw.OrderID,
 			&withdraw.Withdraw,
 			&withdraw.CreatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get withdraw: %w", err)
 		}
 		withdraws = append(withdraws, withdraw)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get withdraw: %w", err)
 	}
 
 	return withdraws, nil

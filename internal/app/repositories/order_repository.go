@@ -14,8 +14,8 @@ import (
 )
 
 type OrderRepositoryInterface interface {
-	Store(ctx context.Context, order entities.Order) error
-	UpdateOrder(ctx context.Context, order entities.Order) error
+	Store(ctx context.Context, order *entities.Order) error
+	UpdateOrder(ctx context.Context, order *entities.Order) error
 	GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error)
 	GetByUserID(ctx context.Context, userID int) ([]entities.Order, error)
 	GetTotalAccrualByUserID(ctx context.Context, userID int) (float64, error)
@@ -25,9 +25,9 @@ type orderRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func NewOrderRepository(DB *pgxpool.Pool) OrderRepositoryInterface {
+func NewOrderRepository(db *pgxpool.Pool) OrderRepositoryInterface {
 	return &orderRepository{
-		Pool: DB,
+		Pool: db,
 	}
 }
 
@@ -37,51 +37,51 @@ func (r *orderRepository) GetByUserID(ctx context.Context, userID int) ([]entiti
 			ORDER BY created_at ASC`
 	rows, err := r.Pool.Query(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get orders By UserID: %w", err)
 	}
 	defer rows.Close()
 
 	var orders []entities.Order
 	for rows.Next() {
 		var order entities.Order
-		err := rows.Scan(
-			&order.OrderId,
-			&order.StatusId,
+		err = rows.Scan(
+			&order.OrderID,
+			&order.StatusID,
 			&order.Accrual,
 			&order.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get orders parse result %d: %w", order.OrderID, err)
 		}
 		orders = append(orders, order)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get orders userID:%d: %w", userID, err)
 	}
 
 	return orders, nil
 }
 
-func (r *orderRepository) Store(ctx context.Context, order entities.Order) error {
+func (r *orderRepository) Store(ctx context.Context, order *entities.Order) error {
 	query := `
 		INSERT INTO orders (order_number, user_id, status_id)
 		VALUES ($1, $2, $3)
 	`
 
-	_, err := r.Pool.Exec(ctx, query, order.OrderId, order.UserID, order.StatusId)
+	_, err := r.Pool.Exec(ctx, query, order.OrderID, order.UserID, order.StatusID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 			err = apperrors.ErrDuplicateOrderID
 		}
-		return err
+		return fmt.Errorf("failed to save order %d: %w", order.OrderID, err)
 	}
 
 	return nil
 }
 
-func (r *orderRepository) UpdateOrder(ctx context.Context, order entities.Order) error {
+func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order) error {
 	query := `
 		UPDATE orders
 		SET status_id = $1, attempts = $2, next_attempt = $3, accrual = $4, updated_at = NOW()
@@ -90,11 +90,11 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order entities.Order)
 	`
 
 	var updatedOrder entities.Order
-	err := r.Pool.QueryRow(ctx, query, order.StatusId, order.Attempts, order.NextAttempt, order.Accrual, order.OrderId).
-		Scan(&updatedOrder.OrderId, &updatedOrder.UserID, &updatedOrder.StatusId)
+	err := r.Pool.QueryRow(ctx, query, order.StatusID, order.Attempts, order.NextAttempt, order.Accrual, order.OrderID).
+		Scan(&updatedOrder.OrderID, &updatedOrder.UserID, &updatedOrder.StatusID)
 
 	if err != nil {
-		return fmt.Errorf("failed to update order %d: %w", order.OrderId, err)
+		return fmt.Errorf("failed to update order %d: %w", order.OrderID, err)
 	}
 
 	return nil
@@ -115,17 +115,17 @@ func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]enti
 	statusProcessing := entities.StatusProcessing
 	rows, err := r.Pool.Query(ctx, query, statusNew, statusProcessing, attempts, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get Fresh Orders: %w", err)
 	}
 	defer rows.Close()
 
 	var orders []entities.Order
 	for rows.Next() {
 		var order entities.Order
-		err := rows.Scan(
+		err = rows.Scan(
 			&order.ID,
-			&order.OrderId,
-			&order.StatusId,
+			&order.OrderID,
+			&order.StatusID,
 			&order.Accrual,
 			&order.NextAttempt,
 			&order.Attempts,
@@ -133,13 +133,13 @@ func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]enti
 			&order.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to Scan orders: %w", err)
 		}
 		orders = append(orders, order)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get orders: %w", err)
 	}
 
 	return orders, nil

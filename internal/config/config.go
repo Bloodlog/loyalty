@@ -12,4 +12,5 @@ type Config struct {
 	RateLimit          int
 	AgentTimeoutClient time.Duration
 	AgentOrderLimit    int
+	AgentDefaultRetry  time.Duration
 }

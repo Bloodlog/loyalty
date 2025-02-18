@@ -1,4 +1,4 @@
-package send_orders
+package accrual
 
 import (
 	"errors"
@@ -12,9 +12,7 @@ import (
 )
 
 func TestSendOrder(t *testing.T) {
-	var accrual float64
-	accrual = 500
-
+	accrual := 500.0
 	tests := []struct {
 		name           string
 		responseCode   int
@@ -57,7 +55,11 @@ func TestSendOrder(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.responseCode)
 				if tt.responseBody != "" {
-					w.Write([]byte(tt.responseBody))
+					_, err := w.Write([]byte(tt.responseBody))
+					if err != nil {
+						t.Errorf("Failed to Write: %v", err)
+						return
+					}
 				}
 				if tt.responseCode == http.StatusTooManyRequests {
 					retry := strconv.Itoa(tt.retryAfter)

@@ -12,7 +12,7 @@ import (
 )
 
 func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) error {
-	router := routers.ConfigureServerHandler(db, cfg)
+	router := routers.ConfigureServerHandler(db, cfg, logger)
 	logger.Infoln("Start http server: ", cfg.HTTPAddress)
 	err := http.ListenAndServe(cfg.HTTPAddress, router)
 	if err != nil {

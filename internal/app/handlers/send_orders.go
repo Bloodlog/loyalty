@@ -12,21 +12,22 @@ import (
 )
 
 type SendOrderHandler struct {
-	SendOrderService services.SendOrdersService
+	SendOrderService services.AccrualService
 	Cfg              *config.Config
-	sendQueue        chan entities.Order
+	sendQueue        chan *entities.Order
 	Logger           *zap.SugaredLogger
 }
 
 func NewSendOrderHandler(
-	sendOrderService services.SendOrdersService,
+	sendOrderService services.AccrualService,
 	cfg *config.Config,
 	logger *zap.SugaredLogger,
 ) *SendOrderHandler {
+	handlerLogger := logger.With("component:NewSendOrderHandler", "SendOrderHandler")
 	return &SendOrderHandler{
 		SendOrderService: sendOrderService,
 		Cfg:              cfg,
-		Logger:           logger,
+		Logger:           handlerLogger,
 	}
 }
 
@@ -34,10 +35,10 @@ func (h *SendOrderHandler) SendUserOrders() error {
 	pollTicker := time.NewTicker(h.Cfg.PollInterval)
 	defer pollTicker.Stop()
 
-	h.sendQueue = make(chan entities.Order, h.Cfg.RateLimit)
+	h.sendQueue = make(chan *entities.Order, h.Cfg.RateLimit)
 
 	var wg sync.WaitGroup
-	for i := 0; i < h.Cfg.RateLimit; i++ {
+	for range make([]struct{}, h.Cfg.RateLimit) {
 		wg.Add(1)
 		go h.worker(&wg)
 	}
@@ -51,7 +52,8 @@ func (h *SendOrderHandler) SendUserOrders() error {
 				continue
 			}
 
-			for _, order := range newOrders {
+			for i := range newOrders {
+				order := &newOrders[i]
 				h.sendQueue <- order
 			}
 		}
@@ -70,7 +72,7 @@ func (h *SendOrderHandler) worker(wg *sync.WaitGroup) {
 		ctx := context.Background()
 		err := h.SendOrderService.SendOrder(ctx, order)
 		if err != nil {
-			h.Logger.Infof("Failed to send order %d: %v\n", order.OrderId, err)
+			h.Logger.Infof("Failed to send order %d: %v\n", order.OrderID, err)
 		}
 	}
 }

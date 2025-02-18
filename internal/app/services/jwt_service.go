@@ -10,7 +10,7 @@ import (
 )
 
 type JwtService interface {
-	CreateJwt(userId int) (string, error)
+	CreateJwt(userID int) (string, error)
 	GetUserID(tokenString string) (int, error)
 }
 
@@ -24,17 +24,17 @@ func NewJwtService(cfg *config.Config) JwtService {
 	}
 }
 
-func (o *jwtService) CreateJwt(userId int) (string, error) {
+func (o *jwtService) CreateJwt(userID int) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, dto.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(o.Cfg.AuthTokenExpired)),
 		},
-		UserID: userId,
+		UserID: userID,
 	})
 
 	tokenString, err := token.SignedString([]byte(o.Cfg.AuthSecretKey))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to SignedString: %w", err)
 	}
 
 	return tokenString, nil
@@ -50,11 +50,11 @@ func (o *jwtService) GetUserID(tokenString string) (int, error) {
 			return []byte(o.Cfg.AuthSecretKey), nil
 		})
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to ParseWithClaims: %w", err)
 	}
 
 	if !token.Valid {
-		return 0, err
+		return 0, fmt.Errorf("failed auth token not valid: %w", err)
 	}
 
 	return claims.UserID, nil

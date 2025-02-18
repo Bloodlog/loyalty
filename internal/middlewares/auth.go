@@ -1,9 +1,9 @@
 package middlewares
 
 import (
-	"context"
 	"loyalty/internal/app/repositories"
 	"loyalty/internal/app/services"
+	"loyalty/internal/app/utils"
 	"net/http"
 )
 
@@ -24,9 +24,9 @@ func Auth(
 				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
-			ctx := context.WithValue(r.Context(), "userID", userID)
+			ctx := utils.SetUserID(r.Context(), userID)
 
-			exist := userRepository.IsExistById(ctx, userID)
+			exist := userRepository.IsExistByID(ctx, userID)
 			if !exist {
 				http.Error(w, "", http.StatusUnauthorized)
 				return

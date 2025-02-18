@@ -8,20 +8,26 @@ import (
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/services"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
 	UserService services.UserService
 	JwtService  services.JwtService
+	Logger      *zap.SugaredLogger
 }
 
 func NewUserHandler(
 	userService services.UserService,
 	jwtService services.JwtService,
+	logger *zap.SugaredLogger,
 ) *UserHandler {
+	handlerLogger := logger.With("component:NewUserHandler", "UserHandler")
 	return &UserHandler{
 		UserService: userService,
 		JwtService:  jwtService,
+		Logger:      handlerLogger,
 	}
 }
 
@@ -44,11 +50,17 @@ func (h *UserHandler) LoginUser() http.HandlerFunc {
 
 		tokenString, err := h.JwtService.CreateJwt(user.ID)
 		if err != nil {
+			h.Logger.Infoln("error CreateJwt", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		response.WriteHeader(http.StatusOK)
-		json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
+		err = json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
+		if err != nil {
+			h.Logger.Infoln("error Encode token", err)
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -69,17 +81,24 @@ func (h *UserHandler) RegisterUser() http.HandlerFunc {
 				// логин уже занят;
 				response.WriteHeader(http.StatusConflict)
 			}
+			h.Logger.Infoln("error Register", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		tokenString, err := h.JwtService.CreateJwt(user.ID)
 		if err != nil {
+			h.Logger.Infoln("error CreateJwt", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		response.WriteHeader(http.StatusOK)
-		json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
+		err = json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
+		if err != nil {
+			h.Logger.Infoln("error Encode token", err)
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }

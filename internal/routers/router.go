@@ -8,18 +8,20 @@ import (
 	"loyalty/internal/middlewares"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config) http.Handler {
+func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
 
-	registerAPIRouter(router, db, cfg)
+	registerAPIRouter(router, db, cfg, logger)
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -28,7 +30,7 @@ func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	return router
 }
 
-func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config) {
+func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) {
 	userRepo := repositories.NewUserRepository(db)
 	orderRepo := repositories.NewOrderRepository(db)
 	withdrawRepo := repositories.NewWithdrawRepository(db)
@@ -38,9 +40,9 @@ func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config) {
 	balanceService := services.NewBalanceService(orderRepo, withdrawRepo)
 	jwtService := services.NewJwtService(cfg)
 
-	userHandler := handlers.NewUserHandler(userService, jwtService)
-	orderHandler := handlers.NewOrderHandler(orderService)
-	balanceHandler := handlers.NewBalanceHandler(balanceService)
+	userHandler := handlers.NewUserHandler(userService, jwtService, logger)
+	orderHandler := handlers.NewOrderHandler(orderService, logger)
+	balanceHandler := handlers.NewBalanceHandler(balanceService, logger)
 
 	r.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", userHandler.RegisterUser())

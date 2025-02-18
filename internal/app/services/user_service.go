@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"loyalty/internal/app/dto"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/repositories"
@@ -31,12 +32,12 @@ func (u *userService) Register(ctx context.Context, req dto.RegisterRequestBody)
 	user.Login = req.Login
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return user, err
+		return user, fmt.Errorf("failed to GenerateFromPassword: %w", err)
 	}
 	user.Password = string(hashedPassword)
 	newUser, err := u.UserRepository.Store(ctx, user)
 	if err != nil {
-		return user, err
+		return user, fmt.Errorf("failed to save user: %w", err)
 	}
 
 	return newUser, nil
@@ -45,11 +46,11 @@ func (u *userService) Register(ctx context.Context, req dto.RegisterRequestBody)
 func (u *userService) Login(ctx context.Context, req dto.LoginRequestBody) (entities.User, error) {
 	user, err := u.UserRepository.GetByLogin(ctx, req.Login)
 	if err != nil {
-		return user, err
+		return user, fmt.Errorf("failed to GetByLogin: %w", err)
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
-		return user, err
+		return user, fmt.Errorf("failed to CompareHashAndPassword: %w", err)
 	}
 
 	return user, nil

@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+const (
+	defaultAgentTimeout        = 10 * time.Second
+	defaultAuthTokenExpiration = 3 * time.Hour
+	defaultPollInterval        = time.Minute
+	defaultAgentOrderLimit     = 5
+	defaultAgentRetry          = 30 * time.Second
+)
+
 func ParseFlags() (*Config, error) {
 	httpAddressFlag := flag.String("a", "", "адрес и порт запуска сервиса")
 	databaseDsnFlag := flag.String("d", "", "адрес подключения к базе данных")
@@ -23,8 +31,8 @@ func ParseFlags() (*Config, error) {
 	accrualAddress := getStringValue("ACCRUAL_SYSTEM_ADDRESS", *accrualAddressFlag)
 	applicationKey := "supersecretkey"
 
-	agentOrderLimit := 5
-	agentTimeoutClient := 10 * time.Second
+	agentOrderLimit := defaultAgentOrderLimit
+	agentTimeoutClient := defaultAgentTimeout
 	if agentOrderLimit > int(agentTimeoutClient/time.Second) {
 		return nil, fmt.Errorf(
 			"AgentOrderLimit (%d) превышает допустимое количество для заданного AgentTimeoutClient (%s)",
@@ -32,17 +40,19 @@ func ParseFlags() (*Config, error) {
 			agentTimeoutClient,
 		)
 	}
+	rateLimit := 1
 
 	return &Config{
 		DatabaseDsn:        databaseDsn,
 		HTTPAddress:        httpAddress,
 		AccrualAddress:     accrualAddress,
 		AuthSecretKey:      applicationKey,
-		AuthTokenExpired:   time.Hour * 3,
-		PollInterval:       time.Minute * 1,
-		RateLimit:          1,
+		AuthTokenExpired:   defaultAuthTokenExpiration,
+		PollInterval:       defaultPollInterval,
+		RateLimit:          rateLimit,
 		AgentTimeoutClient: agentTimeoutClient,
 		AgentOrderLimit:    agentOrderLimit,
+		AgentDefaultRetry:  defaultAgentRetry,
 	}, nil
 }
 
@@ -53,10 +63,10 @@ func validateUnknownArgs(unknownArgs []string) error {
 	return nil
 }
 
-func getStringValue(env, flag string) string {
+func getStringValue(env, flagValue string) string {
 	if envValue, exists := os.LookupEnv(env); exists {
 		return envValue
 	} else {
-		return flag
+		return flagValue
 	}
 }

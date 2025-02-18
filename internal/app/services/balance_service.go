@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"loyalty/internal/app/apperrors"
 	"loyalty/internal/app/dto"
 	"loyalty/internal/app/entities"
@@ -11,9 +12,9 @@ import (
 )
 
 type BalanceService interface {
-	GetBalance(ctx context.Context, userId int) (dto.BalanceResponseBody, error)
-	GetWithdrawals(ctx context.Context, userId int) ([]dto.WithdrawalsResponseBody, error)
-	Withdraw(ctx context.Context, userId int, req dto.WithdrawBody) error
+	GetBalance(ctx context.Context, userID int) (dto.BalanceResponseBody, error)
+	GetWithdrawals(ctx context.Context, userID int) ([]dto.WithdrawalsResponseBody, error)
+	Withdraw(ctx context.Context, userID int, req dto.WithdrawBody) error
 }
 
 type balanceService struct {
@@ -31,15 +32,15 @@ func NewBalanceService(
 	}
 }
 
-func (o *balanceService) GetBalance(ctx context.Context, userId int) (dto.BalanceResponseBody, error) {
+func (o *balanceService) GetBalance(ctx context.Context, userID int) (dto.BalanceResponseBody, error) {
 	var balanceResponse dto.BalanceResponseBody
-	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userId)
+	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userID)
 	if err != nil {
-		return balanceResponse, err
+		return balanceResponse, fmt.Errorf("failed GetTotalAccrualByUserID: %w", err)
 	}
-	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userId)
+	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userID)
 	if err != nil {
-		return balanceResponse, err
+		return balanceResponse, fmt.Errorf("failed GetTotalWithdrawByUserID: %w", err)
 	}
 	balanceResponse = dto.BalanceResponseBody{
 		Current:   current,
@@ -49,16 +50,15 @@ func (o *balanceService) GetBalance(ctx context.Context, userId int) (dto.Balanc
 	return balanceResponse, nil
 }
 
-func (o *balanceService) GetWithdrawals(ctx context.Context, userId int) ([]dto.WithdrawalsResponseBody, error) {
-	var response []dto.WithdrawalsResponseBody
-	withdraws, err := o.WithdrawRepository.GetByUserID(ctx, userId)
+func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.WithdrawalsResponseBody, error) {
+	withdraws, err := o.WithdrawRepository.GetByUserID(ctx, userID)
 	if err != nil {
-		return response, err
+		return nil, fmt.Errorf("failed GetWithdrawals: %w", err)
 	}
-
+	response := make([]dto.WithdrawalsResponseBody, 0, len(withdraws))
 	for _, withdraw := range withdraws {
 		response = append(response, dto.WithdrawalsResponseBody{
-			Number:     strconv.Itoa(withdraw.OrderId),
+			Number:     strconv.Itoa(withdraw.OrderID),
 			Withdrawaw: withdraw.Withdraw,
 			CreatedAt:  withdraw.CreatedAt.Format(time.RFC3339),
 		})
@@ -67,27 +67,27 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userId int) ([]dto.
 	return response, nil
 }
 
-func (o *balanceService) Withdraw(ctx context.Context, userId int, req dto.WithdrawBody) error {
-	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userId)
+func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.WithdrawBody) error {
+	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed GetTotalAccrualByUserID: %w", err)
 	}
-	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userId)
+	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed GetTotalWithdrawByUserID: %w", err)
 	}
 	if (current - withdrawn) < float64(req.Sum) {
 		return apperrors.ErrBalanceNotEnought
 	}
 
 	withdrawOrder := entities.Withdraw{
-		UserID:   int64(userId),
-		OrderId:  int(req.OrderNumber),
+		UserID:   int64(userID),
+		OrderID:  int(req.OrderNumber),
 		Withdraw: float64(req.Sum),
 	}
 	err = o.WithdrawRepository.Store(ctx, withdrawOrder)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save Withdraw: %w", err)
 	}
 
 	return nil

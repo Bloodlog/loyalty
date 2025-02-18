@@ -1,3 +1,5 @@
+[![cov](https://Bloodlog.github.io/loyalty/badges/coverage.svg)](https://github.com/Bloodlog/loyalty/actions)
+
 # go-musthave-diploma-tpl
 
 Шаблон репозитория для индивидуального дипломного проекта курса «Go-разработчик»

@@ -6,15 +6,15 @@ import (
 )
 
 type Order struct {
-	ID          int
-	UserID      int64
-	OrderId     int
-	StatusId    int16
-	Accrual     sql.NullFloat64
-	NextAttempt sql.NullTime
-	Attempts    int
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	NextAttempt sql.NullTime
+	Accrual     sql.NullFloat64
+	UserID      int64
+	ID          int
+	OrderID     int
+	Attempts    int
+	StatusID    int16
 }
 
 const (
@@ -45,7 +45,7 @@ func GetStatusName(statusID int) string {
 	return "UNKNOWN"
 }
 
-func GetStatusIdByName(statusName string) (int, bool) {
+func GetStatusIDByName(statusName string) (int, bool) {
 	id, ok := StatusIds[statusName]
 	return id, ok
 }

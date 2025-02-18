@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"loyalty/internal/app/entities"
-	"loyalty/internal/app/services/send_orders"
+	"loyalty/internal/app/services/accrual"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -15,25 +16,25 @@ import (
 	"loyalty/internal/config"
 )
 
-type SendOrdersService interface {
-	SendOrder(ctx context.Context, order entities.Order) error
+type AccrualService interface {
+	SendOrder(ctx context.Context, order *entities.Order) error
 	GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error)
 }
 
-type sendOrdersService struct {
+type accrualService struct {
 	OrderRepository repositories.OrderRepositoryInterface
 	Client          *resty.Client
 	Cfg             *config.Config
 	Logger          *zap.SugaredLogger
 }
 
-func NewSendOrdersService(
+func NewAccrualService(
 	orderRepository repositories.OrderRepositoryInterface,
 	client *resty.Client,
 	cfg *config.Config,
 	logger *zap.SugaredLogger,
-) SendOrdersService {
-	return &sendOrdersService{
+) AccrualService {
+	return &accrualService{
 		OrderRepository: orderRepository,
 		Client:          client,
 		Cfg:             cfg,
@@ -41,47 +42,47 @@ func NewSendOrdersService(
 	}
 }
 
-func (u *sendOrdersService) GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error) {
+func (u *accrualService) GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error) {
 	orders, err := u.OrderRepository.GetFreshOrders(ctx, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to GetFreshOrders: %w", err)
 	}
 	return orders, nil
 }
 
-func (u *sendOrdersService) SendOrder(ctx context.Context, order entities.Order) error {
-	orderId := int64(order.OrderId)
+func (u *accrualService) SendOrder(ctx context.Context, order *entities.Order) error {
+	orderID := int64(order.OrderID)
 	order.UpdatedAt = time.Now()
-	orderResponse, retryAfter, err := send_orders.SendOrder(u.Client, orderId)
+	orderResponse, retryAfter, err := accrual.SendOrder(u.Client, orderID)
 	if err != nil {
 		u.Logger.Infoln(err)
-		if errors.Is(err, send_orders.ErrTooManyRequests) {
+		if errors.Is(err, accrual.ErrTooManyRequests) {
 			var dur time.Duration
-			dur = 30 * time.Second
+			dur = u.Cfg.AgentDefaultRetry
 			if retryAfter != 0 {
 				dur = time.Duration(retryAfter) * time.Second
 			}
 			order.NextAttempt = sql.NullTime{Time: time.Now().Add(dur), Valid: true}
-			order.Attempts = order.Attempts + 1
+			order.Attempts++
 			err = u.OrderRepository.UpdateOrder(ctx, order)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to update order with retry after: %w", err)
 			}
 		}
-		return err
+		return fmt.Errorf("failed to SendOrder to accrual: %w", err)
 	}
 
-	statusId, _ := entities.GetStatusIdByName(orderResponse.Status)
+	statusID, _ := entities.GetStatusIDByName(orderResponse.Status)
 	if orderResponse.Accrual != nil {
 		order.Accrual = sql.NullFloat64{Float64: *orderResponse.Accrual, Valid: true}
 	} else {
 		order.Accrual = sql.NullFloat64{Valid: false}
 	}
-	order.StatusId = int16(statusId)
+	order.StatusID = int16(statusID)
 	err = u.OrderRepository.UpdateOrder(ctx, order)
 	if err != nil {
 		u.Logger.Infoln(err)
-		return err
+		return fmt.Errorf("failed to UpdateOrder with status: %w", err)
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package send_orders
+package accrual
 
 import (
 	"encoding/json"
@@ -12,9 +12,9 @@ import (
 )
 
 type OrderResponse struct {
+	Accrual *float64 `json:"accrual,omitempty"`
 	Order   string   `json:"order"`
 	Status  string   `json:"status"`
-	Accrual *float64 `json:"accrual,omitempty"`
 }
 
 var (
@@ -23,9 +23,9 @@ var (
 	ErrNoContent       = errors.New("no content (204)")
 )
 
-func SendOrder(client *resty.Client, orderId int64) (*OrderResponse, int, error) {
+func SendOrder(client *resty.Client, orderID int64) (*OrderResponse, int, error) {
 	resp, err := client.R().
-		Get("/api/orders/" + strconv.Itoa(int(orderId)))
+		Get("/api/orders/" + strconv.Itoa(int(orderID)))
 
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to send order: %w", err)
