@@ -32,7 +32,7 @@ func run(loggerZap *zap.SugaredLogger) error {
 	}
 
 	ctx := context.Background()
-	db, err := database.ConfigureDatabase(ctx, cfg)
+	db, err := database.ConfigureDatabase(ctx, cfg, loggerZap)
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
 	}
