@@ -27,3 +27,5 @@ internal/.DS_Store
 golangci-lint
 
 gophermarttest-darwin-arm64
+
+golangci.yml
