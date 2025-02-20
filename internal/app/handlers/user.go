@@ -61,6 +61,14 @@ func (h *UserHandler) LoginUser() http.HandlerFunc {
 			return
 		}
 
+		cookie := &http.Cookie{
+			Name:     "Authorization",
+			Value:    tokenString,
+			Path:     "/",
+			HttpOnly: false,
+			Secure:   false,
+		}
+		http.SetCookie(response, cookie)
 		response.Header().Set("Authorization", tokenString)
 		response.WriteHeader(http.StatusOK)
 	}
@@ -102,6 +110,14 @@ func (h *UserHandler) RegisterUser() http.HandlerFunc {
 			return
 		}
 
+		cookie := &http.Cookie{
+			Name:     "Authorization",
+			Value:    tokenString,
+			Path:     "/",
+			HttpOnly: false,
+			Secure:   false,
+		}
+		http.SetCookie(response, cookie)
 		response.Header().Set("Authorization", tokenString)
 		response.WriteHeader(http.StatusOK)
 	}
