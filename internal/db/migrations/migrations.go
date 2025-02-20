@@ -18,19 +18,19 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 		return fmt.Errorf("failed to start a transaction: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
+		if err = tx.Rollback(ctx); err != nil {
 			if !errors.Is(err, sql.ErrTxDone) {
 				logger.Infoln("failed to rollback the transaction: %v", err)
 			}
 		}
 	}()
 	createSchemaStmts := []string{
-		`	CREATE TABLE IF NOT EXISTS users (
+		`CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			login VARCHAR(200) NOT NULL UNIQUE,
-			password VARCHAR(200) NOT NULL
-			)`,
-
+			password VARCHAR(200) NOT NULL,
+			balance FLOAT NOT NULL DEFAULT 0
+	)`,
 		`CREATE TABLE IF NOT EXISTS orders (
 			id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_number BIGINT NOT NULL UNIQUE,
@@ -42,7 +42,7 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			created_at TIMESTAMP DEFAULT now(),
 			updated_at TIMESTAMP DEFAULT now(),
 			CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
-			)`,
+	)`,
 		`CREATE TABLE IF NOT EXISTS withdraws (
 			id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_number BIGINT NOT NULL UNIQUE,
@@ -50,7 +50,7 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			withdraw FLOAT NOT NULL,
 			created_at TIMESTAMP DEFAULT now(),
 			CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
-			)`,
+    )`,
 	}
 
 	for _, stmt := range createSchemaStmts {

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/services"
+	"loyalty/internal/app/services/accrual"
 	"loyalty/internal/config"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ type SendOrderHandler struct {
 	Cfg              *config.Config
 	sendQueue        chan *entities.Order
 	Logger           *zap.SugaredLogger
+	mu               sync.Mutex
 }
 
 func NewSendOrderHandler(
@@ -70,9 +73,21 @@ func (h *SendOrderHandler) worker(wg *sync.WaitGroup) {
 
 	for order := range h.sendQueue {
 		ctx := context.Background()
+		h.mu.Lock()
 		err := h.SendOrderService.SendOrder(ctx, order)
+		h.mu.Unlock()
+
 		if err != nil {
-			h.Logger.Infof("Failed to send order %d: %v\n", order.OrderID, err)
+			var tooManyReqErr *accrual.ErrTooManyRequestsWithRetry
+			if errors.As(err, &tooManyReqErr) {
+				h.Logger.Infof("Слишком много запросов, пауза %d секунд\n", tooManyReqErr.RetryAfter)
+
+				h.mu.Lock()
+				time.Sleep(time.Duration(tooManyReqErr.RetryAfter) * time.Second)
+				h.mu.Unlock()
+			} else {
+				h.Logger.Infof("Failed to send order %d: %v\n", order.OrderID, err)
+			}
 		}
 	}
 }

@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/services/accrual"
@@ -53,22 +52,9 @@ func (u *accrualService) GetFreshOrders(ctx context.Context, limit int) ([]entit
 func (u *accrualService) SendOrder(ctx context.Context, order *entities.Order) error {
 	orderID := int64(order.OrderID)
 	order.UpdatedAt = time.Now()
-	orderResponse, retryAfter, err := accrual.SendOrder(u.Client, orderID)
+	orderResponse, err := accrual.SendOrder(u.Client, orderID)
 	if err != nil {
 		u.Logger.Infoln(err)
-		if errors.Is(err, accrual.ErrTooManyRequests) {
-			var dur time.Duration
-			dur = u.Cfg.AgentDefaultRetry
-			if retryAfter != 0 {
-				dur = time.Duration(retryAfter) * time.Second
-			}
-			order.NextAttempt = sql.NullTime{Time: time.Now().Add(dur), Valid: true}
-			order.Attempts++
-			err = u.OrderRepository.UpdateOrder(ctx, order)
-			if err != nil {
-				return fmt.Errorf("failed to update order with retry after: %w", err)
-			}
-		}
 		return fmt.Errorf("failed to SendOrder to accrual: %w", err)
 	}
 

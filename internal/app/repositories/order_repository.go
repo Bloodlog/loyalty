@@ -7,6 +7,8 @@ import (
 	"loyalty/internal/app/apperrors"
 	"loyalty/internal/app/entities"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgerrcode"
@@ -82,19 +84,43 @@ func (r *orderRepository) Store(ctx context.Context, order *entities.Order) erro
 }
 
 func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+
 	query := `
 		UPDATE orders
-		SET status_id = $1, attempts = $2, next_attempt = $3, accrual = $4, updated_at = NOW()
-		WHERE order_number = $5
+		SET status_id = $1, accrual = $2, updated_at = NOW()
+		WHERE order_number = $3
 		RETURNING order_number, user_id, status_id
 	`
 
 	var updatedOrder entities.Order
-	err := r.Pool.QueryRow(ctx, query, order.StatusID, order.Attempts, order.NextAttempt, order.Accrual, order.OrderID).
+	err = tx.QueryRow(ctx, query, order.StatusID, order.Accrual, order.OrderID).
 		Scan(&updatedOrder.OrderID, &updatedOrder.UserID, &updatedOrder.StatusID)
 
 	if err != nil {
 		return fmt.Errorf("failed to update order %d: %w", order.OrderID, err)
+	}
+
+	if order.Accrual.Valid && order.Accrual.Float64 > 0 {
+		queryUser := `
+			UPDATE users
+			SET balance = balance + $1
+			WHERE user_id = $2
+		`
+		_, err = tx.Exec(ctx, queryUser, updatedOrder.Accrual, updatedOrder.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to update user balance for user %d: %w", updatedOrder.UserID, err)
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -105,15 +131,12 @@ func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]enti
 		SELECT id, order_number, status_id, accrual, next_attempt, attempts, created_at, updated_at
 		FROM orders
 		WHERE status_id IN ($1, $2)
-		  AND (next_attempt IS NULL OR next_attempt <= NOW())
-		  AND attempts < $3
 		ORDER BY created_at ASC
-		LIMIT $4;
+		LIMIT $3;
 	`
-	attempts := 3
 	statusNew := entities.StatusNew
 	statusProcessing := entities.StatusProcessing
-	rows, err := r.Pool.Query(ctx, query, statusNew, statusProcessing, attempts, limit)
+	rows, err := r.Pool.Query(ctx, query, statusNew, statusProcessing, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Fresh Orders: %w", err)
 	}
@@ -127,8 +150,6 @@ func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]enti
 			&order.OrderID,
 			&order.StatusID,
 			&order.Accrual,
-			&order.NextAttempt,
-			&order.Attempts,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 		)

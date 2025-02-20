@@ -18,38 +18,53 @@ type OrderResponse struct {
 }
 
 var (
-	ErrTooManyRequests = errors.New("too many requests (429)")
-	ErrServerError     = errors.New("internal server error (500)")
-	ErrNoContent       = errors.New("no content (204)")
+	ErrServerError = errors.New("internal server error (500)")
+	ErrNoContent   = errors.New("no content (204)")
 )
 
-func SendOrder(client *resty.Client, orderID int64) (*OrderResponse, int, error) {
+type ErrTooManyRequestsWithRetry struct {
+	RetryAfter int
+}
+
+func (e *ErrTooManyRequestsWithRetry) Error() string {
+	return fmt.Sprintf("too many requests (429), retry after %d seconds", e.RetryAfter)
+}
+
+func SendOrder(client *resty.Client, orderID int64) (*OrderResponse, error) {
 	resp, err := client.R().
 		Get("/api/orders/" + strconv.Itoa(int(orderID)))
 
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to send order: %w", err)
+		return nil, fmt.Errorf("failed to send order: %w", err)
 	}
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		var orderResp OrderResponse
-		if err := json.Unmarshal(resp.Body(), &orderResp); err != nil {
-			return nil, 0, fmt.Errorf("failed to parse response: %w", err)
-		}
-		return &orderResp, 0, nil
+		return handleStatusOkRequests(resp)
 	case http.StatusNoContent:
-		return nil, 0, ErrNoContent
+		return nil, ErrNoContent
 	case http.StatusInternalServerError:
-		return nil, 0, ErrServerError
+		return nil, ErrServerError
 	case http.StatusTooManyRequests:
-		retryAfter := 0
-		if header := resp.Header().Get("Retry-After"); header != "" {
-			if seconds, err := strconv.Atoi(header); err == nil {
-				retryAfter = seconds
-			}
-		}
-		return nil, retryAfter, ErrTooManyRequests
+		return nil, handleTooManyRequests(resp)
 	default:
-		return nil, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
+}
+
+func handleStatusOkRequests(resp *resty.Response) (*OrderResponse, error) {
+	var orderResp OrderResponse
+	if err := json.Unmarshal(resp.Body(), &orderResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &orderResp, nil
+}
+
+func handleTooManyRequests(resp *resty.Response) error {
+	retryAfter := 30
+	if header := resp.Header().Get("Retry-After"); header != "" {
+		if seconds, err := strconv.Atoi(header); err == nil {
+			retryAfter = seconds
+		}
+	}
+	return &ErrTooManyRequestsWithRetry{RetryAfter: retryAfter}
 }

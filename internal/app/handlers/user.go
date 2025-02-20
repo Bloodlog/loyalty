@@ -54,13 +54,15 @@ func (h *UserHandler) LoginUser() http.HandlerFunc {
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		response.WriteHeader(http.StatusOK)
 		err = json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
 		if err != nil {
 			h.Logger.Infoln("error Encode token", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		response.Header().Set("Authorization", tokenString)
+		response.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -93,12 +95,14 @@ func (h *UserHandler) RegisterUser() http.HandlerFunc {
 			return
 		}
 
-		response.WriteHeader(http.StatusOK)
 		err = json.NewEncoder(response).Encode(map[string]string{"token": tokenString})
 		if err != nil {
 			h.Logger.Infoln("error Encode token", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		response.Header().Set("Authorization", tokenString)
+		response.WriteHeader(http.StatusOK)
 	}
 }

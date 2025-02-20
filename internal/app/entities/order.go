@@ -6,15 +6,13 @@ import (
 )
 
 type Order struct {
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	NextAttempt sql.NullTime
-	Accrual     sql.NullFloat64
-	UserID      int64
-	ID          int
-	OrderID     int
-	Attempts    int
-	StatusID    int16
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Accrual   sql.NullFloat64
+	UserID    int64
+	ID        int
+	OrderID   int
+	StatusID  int16
 }
 
 const (

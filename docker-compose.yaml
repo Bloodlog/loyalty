@@ -14,7 +14,7 @@ services:
       POSTGRES_PASSWORD: "P@ssw0rd"
       PGDATA: "/var/lib/postgresql/data"
     volumes:
-      - "./db/init:/docker-entrypoint-initdb.d"
+      - "./db/local/init:/docker-entrypoint-initdb.d"
       - "gophermart-postgres:/var/lib/postgresql/data"
     ports:
       - "5432:5432"
@@ -64,7 +64,6 @@ services:
     networks:
       - gophermart
     environment:
-      DATABASE_URI: postgresql://accrual:accrual@postgres:5432/accrual
       RUN_ADDRESS: 0.0.0.0:8080
 
 volumes:

@@ -11,14 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSendOrder(t *testing.T) {
+func TestSendOrder_Success(t *testing.T) {
 	accrual := 500.0
 	tests := []struct {
 		name           string
 		responseCode   int
 		responseBody   string
-		retryAfter     int
-		expectedError  error
 		expectedResult *OrderResponse
 	}{
 		{
@@ -31,6 +29,39 @@ func TestSendOrder(t *testing.T) {
 				Accrual: &accrual,
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.responseCode)
+				if tt.responseBody != "" {
+					_, err := w.Write([]byte(tt.responseBody))
+					if err != nil {
+						t.Errorf("Failed to write response: %v", err)
+						return
+					}
+				}
+			}))
+			defer server.Close()
+
+			client := resty.New().SetBaseURL(server.URL)
+
+			result, err := SendOrder(client, 123)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
+func TestSendOrder_SimpleErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		responseCode  int
+		responseBody  string
+		expectedError error
+	}{
 		{
 			name:          "No Content - 204",
 			responseCode:  http.StatusNoContent,
@@ -41,13 +72,6 @@ func TestSendOrder(t *testing.T) {
 			responseCode:  http.StatusInternalServerError,
 			expectedError: ErrServerError,
 		},
-		{
-			name:           "Too Many Requests - 429",
-			responseCode:   http.StatusTooManyRequests,
-			retryAfter:     0,
-			expectedError:  ErrTooManyRequests,
-			expectedResult: nil,
-		},
 	}
 
 	for _, tt := range tests {
@@ -57,30 +81,60 @@ func TestSendOrder(t *testing.T) {
 				if tt.responseBody != "" {
 					_, err := w.Write([]byte(tt.responseBody))
 					if err != nil {
-						t.Errorf("Failed to Write: %v", err)
+						t.Errorf("Failed to write response: %v", err)
 						return
 					}
-				}
-				if tt.responseCode == http.StatusTooManyRequests {
-					retry := strconv.Itoa(tt.retryAfter)
-					w.Header().Set("Retry-After", retry)
 				}
 			}))
 			defer server.Close()
 
 			client := resty.New().SetBaseURL(server.URL)
 
-			result, retryAfter, err := SendOrder(client, 123)
-			if tt.expectedError != nil {
-				assert.ErrorIs(t, err, tt.expectedError)
-				assert.Nil(t, result)
-				if errors.Is(tt.expectedError, ErrTooManyRequests) {
-					assert.Equal(t, tt.retryAfter, retryAfter)
+			result, err := SendOrder(client, 123)
+
+			assert.ErrorIs(t, err, tt.expectedError)
+			assert.Nil(t, result)
+		})
+	}
+}
+
+func TestSendOrder_CustomErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		responseCode  int
+		retryAfter    int
+		expectedError error
+	}{
+		{
+			name:         "Too Many Requests - 429",
+			responseCode: http.StatusTooManyRequests,
+			retryAfter:   30,
+			expectedError: &ErrTooManyRequestsWithRetry{
+				RetryAfter: 30,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.responseCode)
+				if tt.responseCode == http.StatusTooManyRequests {
+					w.Header().Set("Retry-After", strconv.Itoa(tt.retryAfter))
 				}
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedResult, result)
+			}))
+			defer server.Close()
+
+			client := resty.New().SetBaseURL(server.URL)
+
+			result, err := SendOrder(client, 123)
+
+			assert.Error(t, err)
+			var tooManyErr *ErrTooManyRequestsWithRetry
+			if errors.As(err, &tooManyErr) {
+				assert.Equal(t, tt.retryAfter, tooManyErr.RetryAfter)
 			}
+			assert.Nil(t, result)
 		})
 	}
 }
