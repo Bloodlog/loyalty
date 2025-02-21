@@ -18,15 +18,18 @@ type BalanceService interface {
 }
 
 type balanceService struct {
+	UserRepository     repositories.UserRepositoryInterface
 	OrderRepository    repositories.OrderRepositoryInterface
 	WithdrawRepository repositories.WithdrawRepositoryInterface
 }
 
 func NewBalanceService(
+	userRepository repositories.UserRepositoryInterface,
 	orderRepository repositories.OrderRepositoryInterface,
 	withdrawRepository repositories.WithdrawRepositoryInterface,
 ) BalanceService {
 	return &balanceService{
+		UserRepository:     userRepository,
 		OrderRepository:    orderRepository,
 		WithdrawRepository: withdrawRepository,
 	}
@@ -34,9 +37,9 @@ func NewBalanceService(
 
 func (o *balanceService) GetBalance(ctx context.Context, userID int) (dto.BalanceResponseBody, error) {
 	var balanceResponse dto.BalanceResponseBody
-	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userID)
+	current, err := o.UserRepository.GetBalanceByUserID(ctx, userID)
 	if err != nil {
-		return balanceResponse, fmt.Errorf("failed GetTotalAccrualByUserID: %w", err)
+		return balanceResponse, fmt.Errorf("failed GetBalance: %w", err)
 	}
 	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userID)
 	if err != nil {
@@ -68,9 +71,9 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.
 }
 
 func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.WithdrawBody) error {
-	current, err := o.OrderRepository.GetTotalAccrualByUserID(ctx, userID)
+	current, err := o.UserRepository.GetBalanceByUserID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed GetTotalAccrualByUserID: %w", err)
+		return fmt.Errorf("failed GetBalanceByUserID: %w", err)
 	}
 	withdrawn, err := o.WithdrawRepository.GetTotalWithdrawByUserID(ctx, userID)
 	if err != nil {

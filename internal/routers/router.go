@@ -37,7 +37,7 @@ func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, logger 
 
 	userService := services.NewUserService(userRepo)
 	orderService := services.NewOrderService(orderRepo)
-	balanceService := services.NewBalanceService(orderRepo, withdrawRepo)
+	balanceService := services.NewBalanceService(userRepo, orderRepo, withdrawRepo)
 	jwtService := services.NewJwtService(cfg)
 
 	userHandler := handlers.NewUserHandler(userService, jwtService, logger)

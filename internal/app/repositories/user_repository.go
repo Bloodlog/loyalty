@@ -17,6 +17,7 @@ type UserRepositoryInterface interface {
 	GetByLogin(ctx context.Context, login string) (entities.User, error)
 	Store(ctx context.Context, user entities.User) (entities.User, error)
 	IsExistByID(ctx context.Context, id int) bool
+	GetBalanceByUserID(ctx context.Context, userID int) (float64, error)
 }
 
 type userRepository struct {
@@ -65,4 +66,20 @@ func (r *userRepository) IsExistByID(ctx context.Context, id int) bool {
 		return false
 	}
 	return exists
+}
+
+func (r *userRepository) GetBalanceByUserID(ctx context.Context, userID int) (float64, error) {
+	query := `
+		SELECT balance
+		FROM users
+		WHERE id = $1
+	`
+
+	var totalAccrual float64
+	err := r.Pool.QueryRow(ctx, query, userID).Scan(&totalAccrual)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total accrual for user %d: %w", userID, err)
+	}
+
+	return totalAccrual, nil
 }
