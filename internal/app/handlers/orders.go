@@ -45,13 +45,14 @@ func (h *OrderHandler) GetUserOrders() http.HandlerFunc {
 		if orders == nil {
 			orders = []dto.OrdersResponseBody{}
 		}
-		response.WriteHeader(http.StatusOK)
+		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(orders)
 		if err != nil {
 			h.Logger.Infoln("error Encode orders", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		response.WriteHeader(http.StatusOK)
 	}
 }
 

@@ -38,13 +38,14 @@ func (h *BalanceHandler) GetUserBalance() http.HandlerFunc {
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		response.WriteHeader(http.StatusOK)
+		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(balance)
 		if err != nil {
 			h.Logger.Infoln("error Encode balance", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		response.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -92,6 +93,7 @@ func (h *BalanceHandler) GetWithdrawals() http.HandlerFunc {
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(withdrawals)
 		if err != nil {
 			h.Logger.Infoln("error Encode withdrawals", err)
