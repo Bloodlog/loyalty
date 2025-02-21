@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"loyalty/internal/app/apperrors"
 	"loyalty/internal/app/dto"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/repositories"
@@ -52,6 +54,10 @@ func (o *orderService) GetOrdersByUserID(ctx context.Context, userID int) ([]dto
 }
 
 func (o *orderService) SaveOrder(ctx context.Context, req dto.OrderBody) error {
+	if err := o.validateOrder(ctx, req.OrderNumber, req.UserID); err != nil {
+		return err
+	}
+
 	order := entities.Order{
 		UserID:   req.UserID,
 		StatusID: int16(req.StatusID),
@@ -63,4 +69,20 @@ func (o *orderService) SaveOrder(ctx context.Context, req dto.OrderBody) error {
 	}
 
 	return nil
+}
+
+func (o *orderService) validateOrder(ctx context.Context, orderNumber int64, userID int64) error {
+	order, err := o.OrderRepository.GetByOrderNumber(ctx, orderNumber)
+	if err == nil {
+		if order.UserID != userID {
+			return apperrors.ErrDuplicateOrderIDAnotherUserID
+		}
+		return apperrors.ErrDuplicateOrderID
+	}
+
+	if errors.Is(err, apperrors.ErrOrderNotFound) {
+		return nil
+	}
+
+	return fmt.Errorf("failed to validate order: %w", err)
 }

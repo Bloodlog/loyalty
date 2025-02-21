@@ -99,9 +99,9 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 			if errors.Is(err, apperrors.ErrDuplicateOrderID) {
 				response.WriteHeader(http.StatusOK)
 			}
-			// TODO: номер заказа уже был загружен другим пользователем;
-			// response.WriteHeader(http.StatusConflict)
-
+			if errors.Is(err, apperrors.ErrDuplicateOrderIDAnotherUserID) {
+				response.WriteHeader(http.StatusConflict)
+			}
 			h.Logger.Infoln("error SaveOrder", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return

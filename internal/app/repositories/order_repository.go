@@ -21,6 +21,7 @@ type OrderRepositoryInterface interface {
 	GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error)
 	GetByUserID(ctx context.Context, userID int) ([]entities.Order, error)
 	GetTotalAccrualByUserID(ctx context.Context, userID int) (float64, error)
+	GetByOrderNumber(ctx context.Context, orderNumber int64) (*entities.Order, error)
 }
 
 type orderRepository struct {
@@ -63,6 +64,22 @@ func (r *orderRepository) GetByUserID(ctx context.Context, userID int) ([]entiti
 	}
 
 	return orders, nil
+}
+
+func (r *orderRepository) GetByOrderNumber(ctx context.Context, orderNumber int64) (*entities.Order, error) {
+	query := `
+		SELECT order_id, user_id, status_id
+		FROM orders
+		WHERE order_number = $1
+	`
+
+	var order entities.Order
+	err := r.Pool.QueryRow(ctx, query, orderNumber).Scan(&order.OrderID, &order.UserID, &order.StatusID)
+	if err != nil {
+		return nil, apperrors.ErrOrderNotFound
+	}
+
+	return &order, nil
 }
 
 func (r *orderRepository) Store(ctx context.Context, order *entities.Order) error {
