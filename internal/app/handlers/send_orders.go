@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/app/services"
-	"loyalty/internal/app/services/accrual"
-	"loyalty/internal/config"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/app/services"
+	"gophermart/internal/app/services/accrual"
+	"gophermart/internal/config"
 	"sync"
 	"time"
 

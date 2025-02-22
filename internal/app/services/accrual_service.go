@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/app/services/accrual"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/app/services/accrual"
 	"math"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 
-	"loyalty/internal/app/repositories"
-	"loyalty/internal/config"
+	"gophermart/internal/app/repositories"
+	"gophermart/internal/config"
 )
 
 type AccrualService interface {

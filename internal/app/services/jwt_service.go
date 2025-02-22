@@ -2,8 +2,8 @@ package services
 
 import (
 	"fmt"
-	"loyalty/internal/app/dto"
-	"loyalty/internal/config"
+	"gophermart/internal/app/dto"
+	"gophermart/internal/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"

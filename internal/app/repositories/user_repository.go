@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"loyalty/internal/app/apperrors"
-	"loyalty/internal/app/entities"
+	"gophermart/internal/app/apperrors"
+	"gophermart/internal/app/entities"
 
 	"github.com/jackc/pgx/v5/pgconn"
 

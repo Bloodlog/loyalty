@@ -1,4 +1,4 @@
-module loyality
+module gophermart
 
 go 1.23.5
 

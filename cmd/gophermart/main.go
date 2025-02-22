@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"gophermart/internal/app/command"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/config"
+	database "gophermart/internal/db"
+	"gophermart/internal/logger"
+	"gophermart/internal/server"
 	"log"
-	"loyalty/internal/app/command"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/config"
-	database "loyalty/internal/db"
-	"loyalty/internal/logger"
-	"loyalty/internal/server"
 
 	"go.uber.org/zap"
 )

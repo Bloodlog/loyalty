@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"loyalty/internal/app/apperrors"
-	"loyalty/internal/app/dto"
-	"loyalty/internal/app/services"
-	"loyalty/internal/app/utils"
+	"gophermart/internal/app/apperrors"
+	"gophermart/internal/app/dto"
+	"gophermart/internal/app/services"
+	"gophermart/internal/app/utils"
 	"net/http"
 
 	"go.uber.org/zap"

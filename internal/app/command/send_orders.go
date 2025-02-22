@@ -2,12 +2,12 @@ package command
 
 import (
 	"fmt"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/app/handlers"
-	"loyalty/internal/app/repositories"
-	"loyalty/internal/app/services"
-	"loyalty/internal/app/services/accrual"
-	"loyalty/internal/config"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/app/handlers"
+	"gophermart/internal/app/repositories"
+	"gophermart/internal/app/services"
+	"gophermart/internal/app/services/accrual"
+	"gophermart/internal/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"

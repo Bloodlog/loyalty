@@ -1,8 +1,8 @@
 package services
 
 import (
-	"loyalty/internal/app/dto"
-	"loyalty/internal/config"
+	"gophermart/internal/app/dto"
+	"gophermart/internal/config"
 	"testing"
 	"time"
 

@@ -1,9 +1,9 @@
 package middlewares
 
 import (
-	"loyalty/internal/app/repositories"
-	"loyalty/internal/app/services"
-	"loyalty/internal/app/utils"
+	"gophermart/internal/app/repositories"
+	"gophermart/internal/app/services"
+	"gophermart/internal/app/utils"
 	"net/http"
 )
 

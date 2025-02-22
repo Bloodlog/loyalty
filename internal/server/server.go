@@ -2,9 +2,9 @@ package server
 
 import (
 	"fmt"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/config"
-	"loyalty/internal/routers"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/config"
+	"gophermart/internal/routers"
 	"net/http"
 
 	"go.uber.org/zap"

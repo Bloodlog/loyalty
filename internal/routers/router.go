@@ -1,12 +1,12 @@
 package routers
 
 import (
-	"loyalty/internal/app/entities"
-	"loyalty/internal/app/handlers"
-	"loyalty/internal/app/repositories"
-	"loyalty/internal/app/services"
-	"loyalty/internal/config"
-	"loyalty/internal/middlewares"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/app/handlers"
+	"gophermart/internal/app/repositories"
+	"gophermart/internal/app/services"
+	"gophermart/internal/config"
+	"gophermart/internal/middlewares"
 	"net/http"
 
 	"go.uber.org/zap"

@@ -3,9 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
-	"loyalty/internal/app/dto"
-	"loyalty/internal/app/entities"
-	"loyalty/internal/app/repositories"
+	"gophermart/internal/app/dto"
+	"gophermart/internal/app/entities"
+	"gophermart/internal/app/repositories"
 
 	"golang.org/x/crypto/bcrypt"
 )

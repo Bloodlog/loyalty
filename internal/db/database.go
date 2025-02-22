@@ -3,8 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"loyalty/internal/config"
-	"loyalty/internal/db/migrations"
+	"gophermart/internal/config"
+	"gophermart/internal/db/migrations"
 
 	"go.uber.org/zap"
 
