@@ -96,12 +96,12 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 		req.StatusID = entities.StatusNew
 		err = h.OrderService.SaveOrder(ctx, req)
 		if err != nil {
-			if errors.Is(err, apperrors.ErrDuplicateOrderID) {
-				response.WriteHeader(http.StatusOK)
-				return
-			}
 			if errors.Is(err, apperrors.ErrDuplicateOrderIDAnotherUserID) {
 				response.WriteHeader(http.StatusConflict)
+				return
+			}
+			if errors.Is(err, apperrors.ErrDuplicateOrderID) {
+				response.WriteHeader(http.StatusOK)
 				return
 			}
 			h.Logger.Infoln("error SaveOrder", err)

@@ -55,7 +55,7 @@ func (o *orderService) GetOrdersByUserID(ctx context.Context, userID int) ([]dto
 
 func (o *orderService) SaveOrder(ctx context.Context, req dto.OrderBody) error {
 	if err := o.validateOrder(ctx, req.OrderNumber, req.UserID); err != nil {
-		return err
+		return fmt.Errorf("validate failed: %w", err)
 	}
 
 	order := entities.Order{
@@ -73,16 +73,15 @@ func (o *orderService) SaveOrder(ctx context.Context, req dto.OrderBody) error {
 
 func (o *orderService) validateOrder(ctx context.Context, orderNumber int64, userID int64) error {
 	order, err := o.OrderRepository.GetByOrderNumber(ctx, orderNumber)
-	if err == nil {
-		if order.UserID != userID {
-			return apperrors.ErrDuplicateOrderIDAnotherUserID
+	if err != nil {
+		if errors.Is(err, apperrors.ErrOrderNotFound) {
+			return nil
 		}
-		return apperrors.ErrDuplicateOrderID
-	}
 
-	if errors.Is(err, apperrors.ErrOrderNotFound) {
-		return nil
+		return fmt.Errorf("failed to validate order: %w", err)
 	}
-
-	return fmt.Errorf("failed to validate order: %w", err)
+	if order.UserID != userID {
+		return apperrors.ErrDuplicateOrderIDAnotherUserID
+	}
+	return apperrors.ErrDuplicateOrderID
 }

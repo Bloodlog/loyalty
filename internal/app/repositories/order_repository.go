@@ -68,7 +68,7 @@ func (r *orderRepository) GetByUserID(ctx context.Context, userID int) ([]entiti
 
 func (r *orderRepository) GetByOrderNumber(ctx context.Context, orderNumber int64) (*entities.Order, error) {
 	query := `
-		SELECT order_id, user_id, status_id
+		SELECT order_number, user_id, status_id
 		FROM orders
 		WHERE order_number = $1
 	`
@@ -145,7 +145,7 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order
 
 func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error) {
 	query := `
-		SELECT id, order_number, status_id, accrual, next_attempt, attempts, created_at, updated_at
+		SELECT id, order_number, status_id, accrual, created_at, updated_at
 		FROM orders
 		WHERE status_id IN ($1, $2)
 		ORDER BY created_at ASC

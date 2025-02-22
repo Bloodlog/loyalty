@@ -37,8 +37,6 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			status_id INT NOT NULL,
 			user_id INT NOT NULL,
 			accrual FLOAT NULL,
-			next_attempt TIMESTAMP NULL,
-			attempts INTEGER DEFAULT 0,
 			created_at TIMESTAMP DEFAULT now(),
 			updated_at TIMESTAMP DEFAULT now(),
 			CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
