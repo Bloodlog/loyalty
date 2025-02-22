@@ -98,9 +98,11 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, apperrors.ErrDuplicateOrderID) {
 				response.WriteHeader(http.StatusOK)
+				return
 			}
 			if errors.Is(err, apperrors.ErrDuplicateOrderIDAnotherUserID) {
 				response.WriteHeader(http.StatusConflict)
+				return
 			}
 			h.Logger.Infoln("error SaveOrder", err)
 			response.WriteHeader(http.StatusInternalServerError)
