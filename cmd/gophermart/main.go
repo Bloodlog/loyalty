@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"loyalty/internal/app/command"
+	"loyalty/internal/app/entities"
 	"loyalty/internal/config"
 	database "loyalty/internal/db"
 	"loyalty/internal/logger"
@@ -36,12 +37,15 @@ func run(loggerZap *zap.SugaredLogger) error {
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
 	}
+
+	sendQueue := make(chan *entities.Order, cfg.RateLimit)
+
 	go func() {
-		if err := command.ConfigureSendOrderHandler(db, cfg, loggerZap); err != nil {
+		if err := command.ConfigureSendOrderHandler(db, cfg, sendQueue, loggerZap); err != nil {
 			log.Panicln(err)
 		}
 	}()
-	if err := server.ConfigureServerHandler(db, cfg, loggerZap); err != nil {
+	if err := server.ConfigureServerHandler(db, cfg, sendQueue, loggerZap); err != nil {
 		log.Panicln(err)
 	}
 	return nil

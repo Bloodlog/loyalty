@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"loyalty/internal/app/entities"
 	"loyalty/internal/app/handlers"
 	"loyalty/internal/app/repositories"
 	"loyalty/internal/app/services"
@@ -16,12 +17,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) http.Handler {
+func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
 
-	registerAPIRouter(router, db, cfg, logger)
+	registerAPIRouter(router, db, cfg, queue, logger)
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -30,7 +31,7 @@ func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.Su
 	return router
 }
 
-func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) {
+func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) {
 	userRepo := repositories.NewUserRepository(db)
 	orderRepo := repositories.NewOrderRepository(db)
 	withdrawRepo := repositories.NewWithdrawRepository(db)
@@ -41,7 +42,7 @@ func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, logger 
 	jwtService := services.NewJwtService(cfg)
 
 	userHandler := handlers.NewUserHandler(userService, jwtService, logger)
-	orderHandler := handlers.NewOrderHandler(orderService, logger)
+	orderHandler := handlers.NewOrderHandler(orderService, queue, logger)
 	balanceHandler := handlers.NewBalanceHandler(balanceService, logger)
 
 	r.Route("/api/user", func(r chi.Router) {

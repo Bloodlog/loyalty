@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"loyalty/internal/app/entities"
 	"loyalty/internal/app/handlers"
 	"loyalty/internal/app/repositories"
 	"loyalty/internal/app/services"
@@ -12,11 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func ConfigureSendOrderHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) error {
+func ConfigureSendOrderHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) error {
 	client := accrual.NewClient(cfg.AccrualAddress, cfg.AgentTimeoutClient)
 	orderRepository := repositories.NewOrderRepository(db)
 	sendOrdersService := services.NewAccrualService(orderRepository, client, cfg, logger)
-	sendOrderHandler := handlers.NewSendOrderHandler(sendOrdersService, cfg, logger)
+	sendOrderHandler := handlers.NewSendOrderHandler(sendOrdersService, cfg, queue, logger)
 	logger.Infoln("Start accrual agent interval:", cfg.PollInterval)
 	err := sendOrderHandler.SendUserOrders()
 	if err != nil {

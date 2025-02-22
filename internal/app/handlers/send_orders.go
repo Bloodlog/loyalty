@@ -24,6 +24,7 @@ type SendOrderHandler struct {
 func NewSendOrderHandler(
 	sendOrderService services.AccrualService,
 	cfg *config.Config,
+	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) *SendOrderHandler {
 	handlerLogger := logger.With("component:NewSendOrderHandler", "SendOrderHandler")
@@ -31,14 +32,13 @@ func NewSendOrderHandler(
 		SendOrderService: sendOrderService,
 		Cfg:              cfg,
 		Logger:           handlerLogger,
+		sendQueue:        queue,
 	}
 }
 
 func (h *SendOrderHandler) SendUserOrders() error {
 	pollTicker := time.NewTicker(h.Cfg.PollInterval)
 	defer pollTicker.Stop()
-
-	h.sendQueue = make(chan *entities.Order, h.Cfg.RateLimit)
 
 	var wg sync.WaitGroup
 	for range make([]struct{}, h.Cfg.RateLimit) {

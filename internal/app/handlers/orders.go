@@ -19,13 +19,15 @@ import (
 type OrderHandler struct {
 	OrderService services.OrderService
 	Logger       *zap.SugaredLogger
+	Queue        chan *entities.Order
 }
 
-func NewOrderHandler(orderService services.OrderService, logger *zap.SugaredLogger) *OrderHandler {
+func NewOrderHandler(orderService services.OrderService, queue chan *entities.Order, logger *zap.SugaredLogger) *OrderHandler {
 	handlerLogger := logger.With("component:NewOrderHandler", "OrderHandler")
 	return &OrderHandler{
 		OrderService: orderService,
 		Logger:       handlerLogger,
+		Queue:        queue,
 	}
 }
 
@@ -109,5 +111,10 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 			return
 		}
 		response.WriteHeader(http.StatusAccepted)
+		h.Queue <- &entities.Order{
+			OrderID:  int(req.OrderNumber),
+			UserID:   req.UserID,
+			StatusID: int16(req.StatusID),
+		}
 	}
 }

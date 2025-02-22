@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"loyalty/internal/app/entities"
 	"loyalty/internal/config"
 	"loyalty/internal/routers"
 	"net/http"
@@ -11,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, logger *zap.SugaredLogger) error {
-	router := routers.ConfigureServerHandler(db, cfg, logger)
+func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) error {
+	router := routers.ConfigureServerHandler(db, cfg, queue, logger)
 	logger.Infoln("Start http server: ", cfg.HTTPAddress)
 	err := http.ListenAndServe(cfg.HTTPAddress, router)
 	if err != nil {
