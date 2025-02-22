@@ -120,7 +120,7 @@ func (r *withdrawRepository) GetByUserID(ctx context.Context, userID int) ([]ent
 	var withdraws []entities.Withdraw
 	for rows.Next() {
 		var withdraw entities.Withdraw
-		err := rows.Scan(
+		err = rows.Scan(
 			&withdraw.OrderID,
 			&withdraw.Withdraw,
 			&withdraw.CreatedAt,

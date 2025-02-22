@@ -46,9 +46,11 @@ func (o *balanceService) GetBalance(ctx context.Context, userID int) (dto.Balanc
 	if err != nil {
 		return balanceResponse, fmt.Errorf("failed GetTotalWithdrawByUserID: %w", err)
 	}
+	roundedAmount := math.Round(withdrawn*100) / 100
+
 	balanceResponse = dto.BalanceResponseBody{
 		Current:   current,
-		Withdrawn: int64(withdrawn),
+		Withdrawn: roundedAmount,
 	}
 
 	return balanceResponse, nil
@@ -61,9 +63,10 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.
 	}
 	response := make([]dto.WithdrawalsResponseBody, 0, len(withdraws))
 	for _, withdraw := range withdraws {
+		roundedAmount := math.Round(withdraw.Withdraw*100) / 100
 		response = append(response, dto.WithdrawalsResponseBody{
 			Number:     strconv.Itoa(withdraw.OrderID),
-			Withdrawaw: withdraw.Withdraw,
+			Withdrawaw: roundedAmount,
 			CreatedAt:  withdraw.CreatedAt.Format(time.RFC3339),
 		})
 	}
