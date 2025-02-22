@@ -1,6 +1,6 @@
 package dto
 
 type WithdrawBody struct {
-	OrderNumber int64 `json:"order"`
-	Sum         int64 `json:"sum"`
+	OrderNumber string  `json:"order"`
+	Sum         float64 `json:"sum"`
 }

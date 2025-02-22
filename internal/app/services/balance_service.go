@@ -79,14 +79,18 @@ func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.Withd
 	if err != nil {
 		return fmt.Errorf("failed GetTotalWithdrawByUserID: %w", err)
 	}
-	if (current - withdrawn) < float64(req.Sum) {
+	if (current - withdrawn) < req.Sum {
 		return apperrors.ErrBalanceNotEnought
+	}
+	number, err := strconv.ParseInt(req.OrderNumber, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed convert OrderNumber to int : %w", err)
 	}
 
 	withdrawOrder := entities.Withdraw{
 		UserID:   int64(userID),
-		OrderID:  int(req.OrderNumber),
-		Withdraw: float64(req.Sum),
+		OrderID:  int(number),
+		Withdraw: req.Sum,
 	}
 	err = o.WithdrawRepository.Store(ctx, withdrawOrder)
 	if err != nil {
