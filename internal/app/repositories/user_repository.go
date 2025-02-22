@@ -32,7 +32,11 @@ func NewUserRepository(db *pgxpool.Pool) UserRepositoryInterface {
 
 func (r *userRepository) GetByLogin(ctx context.Context, login string) (entities.User, error) {
 	var user entities.User
-	query := "SELECT id, login, password FROM users WHERE login = $1"
+	query := `
+		SELECT id, login, password
+		FROM users
+		WHERE login = $1
+	`
 	err := r.Pool.QueryRow(ctx, query, login).Scan(&user.ID, &user.Login, &user.Password)
 	if err != nil {
 		return user, fmt.Errorf("failed to get login: %w", err)
@@ -60,7 +64,13 @@ func (r *userRepository) Store(ctx context.Context, user entities.User) (entitie
 
 func (r *userRepository) IsExistByID(ctx context.Context, id int) bool {
 	var exists bool
-	query := "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)"
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM users
+			WHERE id = $1
+		)
+	`
 	err := r.Pool.QueryRow(ctx, query, id).Scan(&exists)
 	if err != nil {
 		return false

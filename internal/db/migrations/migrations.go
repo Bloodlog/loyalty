@@ -24,14 +24,16 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			}
 		}
 	}()
-	createSchemaStmts := []string{
-		`CREATE TABLE IF NOT EXISTS users (
+	createSchemaStmts := []string{`
+		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			login VARCHAR(200) NOT NULL UNIQUE,
 			password VARCHAR(200) NOT NULL,
 			balance FLOAT NOT NULL DEFAULT 0
-	)`,
-		`CREATE TABLE IF NOT EXISTS orders (
+		)
+		`,
+		`
+		CREATE TABLE IF NOT EXISTS orders (
 			id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_number BIGINT NOT NULL UNIQUE,
 			status_id INT NOT NULL,
@@ -40,16 +42,18 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			created_at TIMESTAMP DEFAULT now(),
 			updated_at TIMESTAMP DEFAULT now(),
 			CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
-	)`,
-		`CREATE TABLE IF NOT EXISTS withdraws (
+		)
+		`,
+		`
+		CREATE TABLE IF NOT EXISTS withdraws (
 			id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_number BIGINT NOT NULL UNIQUE,
 			user_id INT NOT NULL,
 			withdraw FLOAT NOT NULL,
 			created_at TIMESTAMP DEFAULT now(),
 			CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
-    )`,
-	}
+    	)
+	`}
 
 	for _, stmt := range createSchemaStmts {
 		if _, err := tx.Exec(ctx, stmt); err != nil {

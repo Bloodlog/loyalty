@@ -64,9 +64,12 @@ func (r *withdrawRepository) GetTotalWithdrawByUserID(ctx context.Context, userI
 }
 
 func (r *withdrawRepository) GetByUserID(ctx context.Context, userID int) ([]entities.Withdraw, error) {
-	query := `SELECT order_number, withdraw, created_at
-			FROM withdraws WHERE user_id = $1
-			ORDER BY created_at ASC`
+	query := `
+		SELECT order_number, withdraw, created_at
+		FROM withdraws
+		WHERE user_id = $1
+		ORDER BY created_at ASC
+	`
 	rows, err := r.Pool.Query(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get withdraw: %w", err)
