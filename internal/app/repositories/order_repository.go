@@ -36,7 +36,8 @@ func NewOrderRepository(db *pgxpool.Pool) OrderRepositoryInterface {
 
 func (r *orderRepository) GetByUserID(ctx context.Context, userID int) ([]entities.Order, error) {
 	query := `SELECT order_number, status_id, accrual, updated_at
-			FROM orders WHERE user_id = $1
+			FROM orders
+			WHERE user_id = $1
 			ORDER BY created_at ASC`
 	rows, err := r.Pool.Query(ctx, query, userID)
 	if err != nil {
@@ -59,7 +60,7 @@ func (r *orderRepository) GetByUserID(ctx context.Context, userID int) ([]entiti
 		orders = append(orders, order)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to get orders userID:%d: %w", userID, err)
 	}
 
@@ -128,7 +129,7 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order
 		queryUser := `
 			UPDATE users
 			SET balance = balance + $1
-			WHERE user_id = $2
+			WHERE id = $2
 		`
 		_, err = tx.Exec(ctx, queryUser, updatedOrder.Accrual, updatedOrder.UserID)
 		if err != nil {
