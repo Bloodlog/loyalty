@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"loyalty/internal/app/apperrors"
@@ -116,26 +117,36 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order
 		UPDATE orders
 		SET status_id = $1, accrual = $2, updated_at = NOW()
 		WHERE order_number = $3
-		RETURNING order_number, user_id, status_id
 	`
-
-	var updatedOrder entities.Order
-	err = tx.QueryRow(ctx, query, order.StatusID, order.Accrual, order.OrderID).
-		Scan(&updatedOrder.OrderID, &updatedOrder.UserID, &updatedOrder.StatusID)
-
+	_, err = tx.Exec(ctx, query, order.StatusID, order.Accrual, order.OrderID)
 	if err != nil {
 		return fmt.Errorf("failed to update order %d: %w", order.OrderID, err)
 	}
 
 	if order.Accrual.Valid && order.Accrual.Float64 > 0 {
+		queryGetBalance := `
+	        SELECT COALESCE(balance, 0)
+	        FROM users
+	        WHERE id = $1
+	    `
+		var currentBalance sql.NullFloat64
+		err = tx.QueryRow(ctx, queryGetBalance, order.UserID).Scan(&currentBalance)
+		if err != nil {
+			return fmt.Errorf("failed to get current balance for user %d: %w", order.UserID, err)
+		}
+		newBalance := currentBalance.Float64 + order.Accrual.Float64
 		queryUser := `
 			UPDATE users
-			SET balance = balance + $1
+			SET balance = $1
 			WHERE id = $2
 		`
-		_, err = tx.Exec(ctx, queryUser, updatedOrder.Accrual.Float64, updatedOrder.UserID)
+		_, err = tx.Exec(ctx, queryUser, newBalance, order.UserID)
 		if err != nil {
-			return fmt.Errorf("failed to update user balance for user %d: %w", updatedOrder.UserID, err)
+			return fmt.Errorf(
+				"failed to update user balance for user %d: %w",
+				order.UserID,
+				err,
+			)
 		}
 	}
 
@@ -148,7 +159,7 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order
 
 func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error) {
 	query := `
-		SELECT id, order_number, status_id, accrual, created_at, updated_at
+		SELECT id, order_number, status_id, accrual, user_id, created_at, updated_at
 		FROM orders
 		WHERE status_id IN ($1, $2)
 		ORDER BY created_at ASC
@@ -170,6 +181,7 @@ func (r *orderRepository) GetFreshOrders(ctx context.Context, limit int) ([]enti
 			&order.OrderID,
 			&order.StatusID,
 			&order.Accrual,
+			&order.UserID,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 		)

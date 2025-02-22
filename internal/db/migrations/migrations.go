@@ -29,7 +29,7 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 			id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			login VARCHAR(200) NOT NULL UNIQUE,
 			password VARCHAR(200) NOT NULL,
-			balance FLOAT NOT NULL DEFAULT 0
+			balance FLOAT NULL
 		)
 		`,
 		`
@@ -61,7 +61,7 @@ func Migrate(ctx context.Context, conn *pgxpool.Pool, logger *zap.SugaredLogger)
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"loyalty/internal/app/apperrors"
@@ -85,11 +86,15 @@ func (r *userRepository) GetBalanceByUserID(ctx context.Context, userID int) (fl
 		WHERE id = $1
 	`
 
-	var totalAccrual float64
+	var totalAccrual sql.NullFloat64
 	err := r.Pool.QueryRow(ctx, query, userID).Scan(&totalAccrual)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get total accrual for user %d: %w", userID, err)
 	}
 
-	return totalAccrual, nil
+	if !totalAccrual.Valid {
+		return 0, nil
+	}
+
+	return totalAccrual.Float64, nil
 }
