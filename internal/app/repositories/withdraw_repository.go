@@ -2,10 +2,13 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"loyalty/internal/app/apperrors"
 	"loyalty/internal/app/entities"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -14,7 +17,7 @@ import (
 )
 
 type WithdrawRepositoryInterface interface {
-	Store(ctx context.Context, withdraw entities.Withdraw) error
+	StoreAndUpdateBalance(ctx context.Context, withdraw entities.Withdraw) error
 	GetTotalWithdrawByUserID(ctx context.Context, userID int) (float64, error)
 	GetByUserID(ctx context.Context, userID int) ([]entities.Withdraw, error)
 }
@@ -29,19 +32,57 @@ func NewWithdrawRepository(db *pgxpool.Pool) WithdrawRepositoryInterface {
 	}
 }
 
-func (r *withdrawRepository) Store(ctx context.Context, withdraw entities.Withdraw) error {
+func (r *withdrawRepository) StoreAndUpdateBalance(ctx context.Context, withdraw entities.Withdraw) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+
 	query := `
 		INSERT INTO withdraws (order_number, user_id, withdraw)
 		VALUES ($1, $2, $3)
 	`
-
-	_, err := r.Pool.Exec(ctx, query, withdraw.OrderID, withdraw.UserID, withdraw.Withdraw)
+	_, err = tx.Exec(ctx, query, withdraw.OrderID, withdraw.UserID, withdraw.Withdraw)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 			err = apperrors.ErrDuplicateOrderID
 		}
 		return fmt.Errorf("failed to save withdraw: %w", err)
+	}
+
+	if withdraw.Withdraw > 0 {
+		queryGetBalance := `
+	        SELECT COALESCE(balance, 0)
+	        FROM users
+	        WHERE id = $1
+	    `
+		var currentBalance sql.NullFloat64
+		err = tx.QueryRow(ctx, queryGetBalance, withdraw.UserID).Scan(&currentBalance)
+		if err != nil {
+			return fmt.Errorf("failed to get current balance for user %d: %w", withdraw.UserID, err)
+		}
+		newBalance := currentBalance.Float64 - withdraw.Withdraw
+		queryUser := `
+			UPDATE users
+			SET balance = $1
+			WHERE id = $2
+		`
+		_, err = tx.Exec(ctx, queryUser, newBalance, withdraw.UserID)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to update user balance for user %d: %w",
+				withdraw.UserID,
+				err,
+			)
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

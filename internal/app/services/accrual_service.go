@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/services/accrual"
+	"math"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -60,7 +61,8 @@ func (u *accrualService) SendOrder(ctx context.Context, order *entities.Order) e
 
 	statusID, _ := entities.GetStatusIDByName(orderResponse.Status)
 	if orderResponse.Accrual != nil {
-		order.Accrual = sql.NullFloat64{Float64: *orderResponse.Accrual, Valid: true}
+		roundedAmount := math.Round(*orderResponse.Accrual*100) / 100
+		order.Accrual = sql.NullFloat64{Float64: roundedAmount, Valid: true}
 	} else {
 		order.Accrual = sql.NullFloat64{Valid: false}
 	}

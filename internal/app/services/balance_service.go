@@ -7,6 +7,7 @@ import (
 	"loyalty/internal/app/dto"
 	"loyalty/internal/app/entities"
 	"loyalty/internal/app/repositories"
+	"math"
 	"strconv"
 	"time"
 )
@@ -87,12 +88,13 @@ func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.Withd
 		return fmt.Errorf("failed convert OrderNumber to int : %w", err)
 	}
 
+	roundedAmount := math.Round(req.Sum*100) / 100
 	withdrawOrder := entities.Withdraw{
 		UserID:   int64(userID),
 		OrderID:  int(number),
-		Withdraw: req.Sum,
+		Withdraw: roundedAmount,
 	}
-	err = o.WithdrawRepository.Store(ctx, withdrawOrder)
+	err = o.WithdrawRepository.StoreAndUpdateBalance(ctx, withdrawOrder)
 	if err != nil {
 		return fmt.Errorf("failed to save Withdraw: %w", err)
 	}
