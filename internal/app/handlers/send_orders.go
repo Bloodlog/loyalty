@@ -18,7 +18,7 @@ type SendOrderHandler struct {
 	Cfg              *config.Config
 	sendQueue        chan *entities.Order
 	Logger           *zap.SugaredLogger
-	mu               sync.Mutex
+	mu               *sync.Mutex
 }
 
 func NewSendOrderHandler(
