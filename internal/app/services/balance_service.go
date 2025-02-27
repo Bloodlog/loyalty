@@ -22,6 +22,7 @@ type balanceService struct {
 	UserRepository     repositories.UserRepositoryInterface
 	OrderRepository    repositories.OrderRepositoryInterface
 	WithdrawRepository repositories.WithdrawRepositoryInterface
+	roundingFactor     float64
 }
 
 func NewBalanceService(
@@ -29,10 +30,12 @@ func NewBalanceService(
 	orderRepository repositories.OrderRepositoryInterface,
 	withdrawRepository repositories.WithdrawRepositoryInterface,
 ) BalanceService {
+	const roundingFactor = 100
 	return &balanceService{
 		UserRepository:     userRepository,
 		OrderRepository:    orderRepository,
 		WithdrawRepository: withdrawRepository,
+		roundingFactor:     roundingFactor,
 	}
 }
 
@@ -46,7 +49,7 @@ func (o *balanceService) GetBalance(ctx context.Context, userID int) (dto.Balanc
 	if err != nil {
 		return balanceResponse, fmt.Errorf("failed GetTotalWithdrawByUserID: %w", err)
 	}
-	roundedAmount := math.Round(withdrawn*100) / 100
+	roundedAmount := math.Round(withdrawn*o.roundingFactor) / o.roundingFactor
 
 	balanceResponse = dto.BalanceResponseBody{
 		Current:   current,
@@ -63,7 +66,7 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.
 	}
 	response := make([]dto.WithdrawalsResponseBody, 0, len(withdraws))
 	for _, withdraw := range withdraws {
-		roundedAmount := math.Round(withdraw.Withdraw*100) / 100
+		roundedAmount := math.Round(withdraw.Withdraw*o.roundingFactor) / o.roundingFactor
 		response = append(response, dto.WithdrawalsResponseBody{
 			Number:     strconv.Itoa(withdraw.OrderID),
 			Withdrawaw: roundedAmount,
@@ -91,7 +94,7 @@ func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.Withd
 		return fmt.Errorf("failed convert OrderNumber to int : %w", err)
 	}
 
-	roundedAmount := math.Round(req.Sum*100) / 100
+	roundedAmount := math.Round(req.Sum*o.roundingFactor) / o.roundingFactor
 	withdrawOrder := entities.Withdraw{
 		UserID:   int64(userID),
 		OrderID:  int(number),

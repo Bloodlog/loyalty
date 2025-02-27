@@ -13,7 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func ConfigureSendOrderHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) error {
+func ConfigureSendOrderHandler(
+	db *pgxpool.Pool,
+	cfg *config.Config,
+	queue chan *entities.Order,
+	logger *zap.SugaredLogger,
+) error {
 	client := accrual.NewClient(cfg.AccrualAddress, cfg.AgentTimeoutClient)
 	orderRepository := repositories.NewOrderRepository(db)
 	sendOrdersService := services.NewAccrualService(orderRepository, client, cfg, logger)

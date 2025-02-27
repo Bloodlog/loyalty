@@ -3,8 +3,8 @@ package entities
 import "database/sql"
 
 type User struct {
-	Balance  sql.NullFloat64
 	Login    string
 	Password string
+	Balance  sql.NullFloat64
 	ID       int
 }

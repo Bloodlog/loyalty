@@ -22,11 +22,11 @@ var (
 	ErrNoContent   = errors.New("no content (204)")
 )
 
-type ErrTooManyRequestsWithRetry struct {
+type TooManyRequestsWithRetryError struct {
 	RetryAfter int
 }
 
-func (e *ErrTooManyRequestsWithRetry) Error() string {
+func (e *TooManyRequestsWithRetryError) Error() string {
 	return fmt.Sprintf("too many requests (429), retry after %d seconds", e.RetryAfter)
 }
 
@@ -66,5 +66,5 @@ func handleTooManyRequests(resp *resty.Response) error {
 			retryAfter = seconds
 		}
 	}
-	return &ErrTooManyRequestsWithRetry{RetryAfter: retryAfter}
+	return &TooManyRequestsWithRetryError{RetryAfter: retryAfter}
 }

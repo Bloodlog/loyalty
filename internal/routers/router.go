@@ -17,7 +17,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) http.Handler {
+func ConfigureServerHandler(
+	db *pgxpool.Pool,
+	cfg *config.Config,
+	queue chan *entities.Order,
+	logger *zap.SugaredLogger,
+) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -31,7 +36,13 @@ func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *en
 	return router
 }
 
-func registerAPIRouter(r *chi.Mux, db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) {
+func registerAPIRouter(
+	r *chi.Mux,
+	db *pgxpool.Pool,
+	cfg *config.Config,
+	queue chan *entities.Order,
+	logger *zap.SugaredLogger,
+) {
 	userRepo := repositories.NewUserRepository(db)
 	orderRepo := repositories.NewOrderRepository(db)
 	withdrawRepo := repositories.NewWithdrawRepository(db)

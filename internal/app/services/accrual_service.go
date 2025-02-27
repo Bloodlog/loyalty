@@ -26,6 +26,7 @@ type accrualService struct {
 	Client          *resty.Client
 	Cfg             *config.Config
 	Logger          *zap.SugaredLogger
+	roundingFactor  float64
 }
 
 func NewAccrualService(
@@ -34,11 +35,13 @@ func NewAccrualService(
 	cfg *config.Config,
 	logger *zap.SugaredLogger,
 ) AccrualService {
+	const roundingFactor = 100
 	return &accrualService{
 		OrderRepository: orderRepository,
 		Client:          client,
 		Cfg:             cfg,
 		Logger:          logger,
+		roundingFactor:  roundingFactor,
 	}
 }
 
@@ -61,7 +64,7 @@ func (u *accrualService) SendOrder(ctx context.Context, order *entities.Order) e
 
 	statusID, _ := entities.GetStatusIDByName(orderResponse.Status)
 	if orderResponse.Accrual != nil {
-		roundedAmount := math.Round(*orderResponse.Accrual*100) / 100
+		roundedAmount := math.Round(*orderResponse.Accrual*u.roundingFactor) / u.roundingFactor
 		order.Accrual = sql.NullFloat64{Float64: roundedAmount, Valid: true}
 	} else {
 		order.Accrual = sql.NullFloat64{Valid: false}

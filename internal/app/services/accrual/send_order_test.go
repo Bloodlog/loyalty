@@ -109,7 +109,7 @@ func TestSendOrder_CustomErrors(t *testing.T) {
 			name:         "Too Many Requests - 429",
 			responseCode: http.StatusTooManyRequests,
 			retryAfter:   30,
-			expectedError: &ErrTooManyRequestsWithRetry{
+			expectedError: &TooManyRequestsWithRetryError{
 				RetryAfter: 30,
 			},
 		},
@@ -130,7 +130,7 @@ func TestSendOrder_CustomErrors(t *testing.T) {
 			result, err := SendOrder(client, 123)
 
 			assert.Error(t, err)
-			var tooManyErr *ErrTooManyRequestsWithRetry
+			var tooManyErr *TooManyRequestsWithRetryError
 			if errors.As(err, &tooManyErr) {
 				assert.Equal(t, tt.retryAfter, tooManyErr.RetryAfter)
 			}

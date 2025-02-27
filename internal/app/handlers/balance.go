@@ -25,7 +25,7 @@ func NewBalanceHandler(balanceService services.BalanceService, logger *zap.Sugar
 	}
 }
 
-func (h *BalanceHandler) GetUserBalance() http.HandlerFunc {
+func (b *BalanceHandler) GetUserBalance() http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		ctx := request.Context()
 		userID, err := utils.GetUserID(ctx)
@@ -33,7 +33,7 @@ func (h *BalanceHandler) GetUserBalance() http.HandlerFunc {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		balance, err := h.BalanceService.GetBalance(ctx, userID)
+		balance, err := b.BalanceService.GetBalance(ctx, userID)
 		if err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
 			return
@@ -41,7 +41,7 @@ func (h *BalanceHandler) GetUserBalance() http.HandlerFunc {
 		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(balance)
 		if err != nil {
-			h.Logger.Infoln("error Encode balance", err)
+			b.Logger.Infoln("error Encode balance", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -49,7 +49,7 @@ func (h *BalanceHandler) GetUserBalance() http.HandlerFunc {
 	}
 }
 
-func (h *BalanceHandler) StoreBalanceWithdraw() http.HandlerFunc {
+func (b *BalanceHandler) StoreBalanceWithdraw() http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		ctx := request.Context()
 		userID, err := utils.GetUserID(ctx)
@@ -62,7 +62,7 @@ func (h *BalanceHandler) StoreBalanceWithdraw() http.HandlerFunc {
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if err = h.BalanceService.Withdraw(ctx, userID, req); err != nil {
+		if err = b.BalanceService.Withdraw(ctx, userID, req); err != nil {
 			if errors.Is(err, apperrors.ErrDuplicateOrderID) {
 				// номер заказа уже был загружен этим пользователем;
 				response.WriteHeader(http.StatusOK)
@@ -71,7 +71,7 @@ func (h *BalanceHandler) StoreBalanceWithdraw() http.HandlerFunc {
 				// на счету недостаточно средств;
 				response.WriteHeader(http.StatusPaymentRequired)
 			}
-			h.Logger.Infoln("error save withdraw", err)
+			b.Logger.Infoln("error save withdraw", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -79,7 +79,7 @@ func (h *BalanceHandler) StoreBalanceWithdraw() http.HandlerFunc {
 	}
 }
 
-func (h *BalanceHandler) GetWithdrawals() http.HandlerFunc {
+func (b *BalanceHandler) GetWithdrawals() http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		ctx := request.Context()
 		userID, err := utils.GetUserID(ctx)
@@ -87,16 +87,16 @@ func (h *BalanceHandler) GetWithdrawals() http.HandlerFunc {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		withdrawals, err := h.BalanceService.GetWithdrawals(ctx, userID)
+		withdrawals, err := b.BalanceService.GetWithdrawals(ctx, userID)
 		if err != nil {
-			h.Logger.Infoln("error GetWithdrawals", err)
+			b.Logger.Infoln("error GetWithdrawals", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(withdrawals)
 		if err != nil {
-			h.Logger.Infoln("error Encode withdrawals", err)
+			b.Logger.Infoln("error Encode withdrawals", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}

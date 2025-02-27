@@ -78,7 +78,7 @@ func (h *SendOrderHandler) worker(wg *sync.WaitGroup) {
 		h.mu.Unlock()
 
 		if err != nil {
-			var tooManyReqErr *accrual.ErrTooManyRequestsWithRetry
+			var tooManyReqErr *accrual.TooManyRequestsWithRetryError
 			if errors.As(err, &tooManyReqErr) {
 				h.Logger.Infof("Слишком много запросов, пауза %d секунд\n", tooManyReqErr.RetryAfter)
 

@@ -12,7 +12,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConfigureServerHandler(db *pgxpool.Pool, cfg *config.Config, queue chan *entities.Order, logger *zap.SugaredLogger) error {
+func ConfigureServerHandler(
+	db *pgxpool.Pool,
+	cfg *config.Config,
+	queue chan *entities.Order,
+	logger *zap.SugaredLogger,
+) error {
 	router := routers.ConfigureServerHandler(db, cfg, queue, logger)
 	logger.Infoln("Start http server: ", cfg.HTTPAddress)
 	err := http.ListenAndServe(cfg.HTTPAddress, router)

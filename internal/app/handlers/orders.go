@@ -22,7 +22,11 @@ type OrderHandler struct {
 	Queue        chan *entities.Order
 }
 
-func NewOrderHandler(orderService services.OrderService, queue chan *entities.Order, logger *zap.SugaredLogger) *OrderHandler {
+func NewOrderHandler(
+	orderService services.OrderService,
+	queue chan *entities.Order,
+	logger *zap.SugaredLogger,
+) *OrderHandler {
 	handlerLogger := logger.With("component:NewOrderHandler", "OrderHandler")
 	return &OrderHandler{
 		OrderService: orderService,
@@ -31,7 +35,7 @@ func NewOrderHandler(orderService services.OrderService, queue chan *entities.Or
 	}
 }
 
-func (h *OrderHandler) GetUserOrders() http.HandlerFunc {
+func (o *OrderHandler) GetUserOrders() http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		ctx := request.Context()
 		userID, err := utils.GetUserID(ctx)
@@ -39,7 +43,7 @@ func (h *OrderHandler) GetUserOrders() http.HandlerFunc {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		orders, err := h.OrderService.GetOrdersByUserID(ctx, userID)
+		orders, err := o.OrderService.GetOrdersByUserID(ctx, userID)
 		if err != nil {
 			response.WriteHeader(http.StatusNoContent)
 			return
@@ -50,7 +54,7 @@ func (h *OrderHandler) GetUserOrders() http.HandlerFunc {
 		response.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(response).Encode(orders)
 		if err != nil {
-			h.Logger.Infoln("error Encode orders", err)
+			o.Logger.Infoln("error Encode orders", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -58,7 +62,7 @@ func (h *OrderHandler) GetUserOrders() http.HandlerFunc {
 	}
 }
 
-func (h *OrderHandler) StoreOrders() http.HandlerFunc {
+func (o *OrderHandler) StoreOrders() http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		ctx := request.Context()
 		userID, err := utils.GetUserID(ctx)
@@ -74,7 +78,7 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 		defer func(Body io.ReadCloser) {
 			err = Body.Close()
 			if err != nil {
-				h.Logger.Infoln("error close body", err)
+				o.Logger.Infoln("error close body", err)
 				response.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -96,7 +100,7 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 		req.OrderNumber = number
 		req.UserID = int64(userID)
 		req.StatusID = entities.StatusNew
-		err = h.OrderService.SaveOrder(ctx, req)
+		err = o.OrderService.SaveOrder(ctx, req)
 		if err != nil {
 			if errors.Is(err, apperrors.ErrDuplicateOrderIDAnotherUserID) {
 				response.WriteHeader(http.StatusConflict)
@@ -106,12 +110,12 @@ func (h *OrderHandler) StoreOrders() http.HandlerFunc {
 				response.WriteHeader(http.StatusOK)
 				return
 			}
-			h.Logger.Infoln("error SaveOrder", err)
+			o.Logger.Infoln("error SaveOrder", err)
 			response.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		response.WriteHeader(http.StatusAccepted)
-		h.Queue <- &entities.Order{
+		o.Queue <- &entities.Order{
 			OrderID:  int(req.OrderNumber),
 			UserID:   req.UserID,
 			StatusID: int16(req.StatusID),
