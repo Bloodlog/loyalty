@@ -23,6 +23,7 @@ vendor/
 .vscode
 .DS_Store
 internal/.DS_Store
+.fleet
 
 golangci-lint
 
