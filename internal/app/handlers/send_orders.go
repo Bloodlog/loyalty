@@ -33,6 +33,7 @@ func NewSendOrderHandler(
 		Cfg:              cfg,
 		Logger:           handlerLogger,
 		sendQueue:        queue,
+		mu:       &sync.RWMutex{},
 	}
 }
 
