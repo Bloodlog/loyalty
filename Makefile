@@ -38,3 +38,21 @@ style:
 
 build:
 	docker-compose up --build
+
+migrate:
+	docker run --rm \
+    -v $(realpath ./internal/db/migrations):/migrations \
+    --network gophermart \
+    migrate/migrate:v4.18.1 \
+        -path=/migrations \
+        -database postgresql://gopher:gopher@postgres:5432/gophermart?sslmode=disable \
+        up
+
+ migrate-rollback:
+	docker run --rm \
+	    -v $(realpath ./internal/db/migrations):/migrations \
+	    --network gophermart \
+	    migrate/migrate:v4.18.1 \
+	        -path=/migrations \
+	        -database postgresql://gopher:gopher@postgres:5432/gophermart?sslmode=disable \
+	        down -all

@@ -6,9 +6,9 @@ import (
 	"gophermart/internal/app/command"
 	"gophermart/internal/app/entities"
 	"gophermart/internal/config"
-	database "gophermart/internal/db"
 	"gophermart/internal/logger"
 	"gophermart/internal/server"
+	"gophermart/internal/store"
 	"log"
 
 	"go.uber.org/zap"
@@ -20,7 +20,7 @@ func main() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	if err := run(loggerZap); err != nil {
+	if err = run(loggerZap); err != nil {
 		loggerZap.Fatal("Application failed", zap.Error(err))
 	}
 }
@@ -33,7 +33,7 @@ func run(loggerZap *zap.SugaredLogger) error {
 	}
 
 	ctx := context.Background()
-	db, err := database.ConfigureDatabase(ctx, cfg, loggerZap)
+	storeDB, err := store.NewDB(ctx, cfg.DatabaseDsn)
 	if err != nil {
 		return fmt.Errorf("database error: %w", err)
 	}
@@ -41,11 +41,11 @@ func run(loggerZap *zap.SugaredLogger) error {
 	sendQueue := make(chan *entities.Order, cfg.RateLimit)
 
 	go func() {
-		if err := command.ConfigureSendOrderHandler(db, cfg, sendQueue, loggerZap); err != nil {
+		if err := command.ConfigureSendOrderHandler(storeDB.Pool, cfg, sendQueue, loggerZap); err != nil {
 			log.Panicln(err)
 		}
 	}()
-	if err := server.ConfigureServerHandler(db, cfg, sendQueue, loggerZap); err != nil {
+	if err := server.ConfigureServerHandler(storeDB.Pool, cfg, sendQueue, loggerZap); err != nil {
 		log.Panicln(err)
 	}
 	return nil

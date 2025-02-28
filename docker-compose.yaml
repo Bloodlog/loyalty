@@ -48,7 +48,7 @@ services:
     networks:
       - gophermart
     environment:
-      DATABASE_URI: postgresql://gopher:gopher@postgres:5432/gophermart
+      DATABASE_URI: postgresql://gopher:gopher@postgres:5432/gophermart?sslmode=disable
       RUN_ADDRESS: 0.0.0.0:8080
       ACCRUAL_SYSTEM_ADDRESS: http://accrual:8080
 
