@@ -18,7 +18,7 @@ type SendOrderHandler struct {
 	Cfg              *config.Config
 	sendQueue        chan *entities.Order
 	Logger           *zap.SugaredLogger
-	mu               *sync.Mutex
+	mu               *sync.RWMutex
 }
 
 func NewSendOrderHandler(
@@ -81,10 +81,7 @@ func (h *SendOrderHandler) worker(wg *sync.WaitGroup) {
 			var tooManyReqErr *accrual.TooManyRequestsWithRetryError
 			if errors.As(err, &tooManyReqErr) {
 				h.Logger.Infof("Слишком много запросов, пауза %d секунд\n", tooManyReqErr.RetryAfter)
-
-				h.mu.Lock()
 				time.Sleep(time.Duration(tooManyReqErr.RetryAfter) * time.Second)
-				h.mu.Unlock()
 			} else {
 				h.Logger.Infof("Failed to send order %d: %v\n", order.OrderID, err)
 			}
