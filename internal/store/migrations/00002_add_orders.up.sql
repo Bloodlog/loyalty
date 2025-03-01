@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS orders (
     status_id INT NOT NULL,
     user_id INT NOT NULL,
     accrual FLOAT NULL,
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now(),
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

@@ -17,12 +17,13 @@ import (
 )
 
 type OrderRepositoryInterface interface {
-	Store(ctx context.Context, order *entities.Order) error
-	UpdateOrder(ctx context.Context, order *entities.Order) error
+	Store(ctx context.Context, tx pgx.Tx, order *entities.Order) (int, error)
+	UpdateOrder(ctx context.Context, tx pgx.Tx, order *entities.Order) error
 	GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error)
 	GetByUserID(ctx context.Context, userID int) ([]entities.Order, error)
 	GetTotalAccrualByUserID(ctx context.Context, userID int) (float64, error)
 	GetByOrderNumber(ctx context.Context, orderNumber int64) (*entities.Order, error)
+	GetByID(ctx context.Context, tx pgx.Tx, orderID int64) (*entities.Order, error)
 }
 
 type orderRepository struct {
@@ -86,38 +87,59 @@ func (r *orderRepository) GetByOrderNumber(ctx context.Context, orderNumber int6
 	return &order, nil
 }
 
-func (r *orderRepository) Store(ctx context.Context, order *entities.Order) error {
+func (r *orderRepository) GetByID(ctx context.Context, tx pgx.Tx, orderID int64) (*entities.Order, error) {
+	query := `
+		SELECT order_number, user_id, status_id
+		FROM orders
+		WHERE id = $1
+	`
+
+	var order entities.Order
+	var err error
+	if tx != nil {
+		err = tx.QueryRow(ctx, query, orderID).Scan(&order.OrderID, &order.UserID, &order.StatusID)
+	} else {
+		err = r.Pool.QueryRow(ctx, query, orderID).Scan(&order.OrderID, &order.UserID, &order.StatusID)
+	}
+	if err != nil {
+		return nil, apperrors.ErrOrderNotFound
+	}
+
+	return &order, nil
+}
+
+func (r *orderRepository) Store(ctx context.Context, tx pgx.Tx, order *entities.Order) (int, error) {
 	query := `
 		INSERT INTO orders (order_number, user_id, status_id)
 		VALUES ($1, $2, $3)
+		RETURNING id
 	`
+	var err error
 
-	_, err := r.Pool.Exec(ctx, query, order.OrderID, order.UserID, order.StatusID)
+	if tx != nil {
+		err = tx.QueryRow(ctx, query, order.OrderID, order.UserID, order.StatusID).Scan(&order.ID)
+	} else {
+		err = r.Pool.QueryRow(ctx, query, order.OrderID, order.UserID, order.StatusID).Scan(&order.ID)
+	}
+
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 			err = apperrors.ErrDuplicateOrderID
 		}
-		return fmt.Errorf("failed to save order %d: %w", order.OrderID, err)
+		return 0, fmt.Errorf("failed to save order %d: %w", order.OrderID, err)
 	}
 
-	return nil
+	return order.ID, nil
 }
 
-func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order) error {
-	tx, err := r.Pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		_ = tx.Rollback(ctx)
-	}(tx, ctx)
-
+func (r *orderRepository) UpdateOrder(ctx context.Context, tx pgx.Tx, order *entities.Order) error {
 	query := `
 		UPDATE orders
 		SET status_id = $1, accrual = $2, updated_at = NOW()
 		WHERE order_number = $3
 	`
+	var err error
 	_, err = tx.Exec(ctx, query, order.StatusID, order.Accrual, order.OrderID)
 	if err != nil {
 		return fmt.Errorf("failed to update order %d: %w", order.OrderID, err)
@@ -148,10 +170,6 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, order *entities.Order
 				err,
 			)
 		}
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

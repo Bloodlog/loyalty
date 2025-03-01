@@ -10,6 +10,9 @@ import (
 	"gophermart/internal/app/repositories"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type OrderService interface {
@@ -18,14 +21,20 @@ type OrderService interface {
 }
 
 type orderService struct {
+	Pool            *pgxpool.Pool
 	OrderRepository repositories.OrderRepositoryInterface
+	JobRepository   repositories.JobRepositoryInterface
 }
 
 func NewOrderService(
+	db *pgxpool.Pool,
 	orderRepository repositories.OrderRepositoryInterface,
+	jobRepository repositories.JobRepositoryInterface,
 ) OrderService {
 	return &orderService{
+		Pool:            db,
 		OrderRepository: orderRepository,
+		JobRepository:   jobRepository,
 	}
 }
 
@@ -63,8 +72,27 @@ func (o *orderService) SaveOrder(ctx context.Context, req dto.OrderBody) error {
 		StatusID: int16(req.StatusID),
 		OrderID:  int(req.OrderNumber),
 	}
-	err := o.OrderRepository.Store(ctx, &order)
+
+	tx, err := o.Pool.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("failed to SaveOrder: %w", err)
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err = tx.Rollback(ctx)
+	}(tx, ctx)
+
+	ID, err := o.OrderRepository.Store(ctx, tx, &order)
+	if err != nil {
+		return fmt.Errorf("failed to SaveOrder: %w", err)
+	}
+	job := entities.Job{
+		OrderID: int64(ID),
+	}
+	err = o.JobRepository.SaveJob(ctx, tx, &job)
+	if err != nil {
+		return fmt.Errorf("failed to Save job: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to SaveOrder: %w", err)
 	}
 

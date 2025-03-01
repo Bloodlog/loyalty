@@ -1,7 +1,6 @@
 package routers
 
 import (
-	"gophermart/internal/app/entities"
 	"gophermart/internal/app/handlers"
 	"gophermart/internal/app/repositories"
 	"gophermart/internal/app/services"
@@ -20,14 +19,13 @@ import (
 func ConfigureServerHandler(
 	db *pgxpool.Pool,
 	cfg *config.Config,
-	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
 
-	registerAPIRouter(router, db, cfg, queue, logger)
+	registerAPIRouter(router, db, cfg, logger)
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -40,20 +38,20 @@ func registerAPIRouter(
 	r *chi.Mux,
 	db *pgxpool.Pool,
 	cfg *config.Config,
-	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) {
 	userRepo := repositories.NewUserRepository(db)
 	orderRepo := repositories.NewOrderRepository(db)
 	withdrawRepo := repositories.NewWithdrawRepository(db)
+	jobRepo := repositories.NewJobRepository(db)
 
 	userService := services.NewUserService(userRepo)
-	orderService := services.NewOrderService(orderRepo)
+	orderService := services.NewOrderService(db, orderRepo, jobRepo)
 	balanceService := services.NewBalanceService(userRepo, orderRepo, withdrawRepo)
 	jwtService := services.NewJwtService(cfg)
 
 	userHandler := handlers.NewUserHandler(userService, jwtService, logger)
-	orderHandler := handlers.NewOrderHandler(orderService, queue, logger)
+	orderHandler := handlers.NewOrderHandler(orderService, logger)
 	balanceHandler := handlers.NewBalanceHandler(balanceService, logger)
 
 	r.Route("/api/user", func(r chi.Router) {

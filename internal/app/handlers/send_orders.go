@@ -16,7 +16,7 @@ import (
 type SendOrderHandler struct {
 	SendOrderService services.AccrualService
 	Cfg              *config.Config
-	sendQueue        chan *entities.Order
+	sendQueue        chan *entities.Job
 	Logger           *zap.SugaredLogger
 	mu               *sync.RWMutex
 }
@@ -24,44 +24,53 @@ type SendOrderHandler struct {
 func NewSendOrderHandler(
 	sendOrderService services.AccrualService,
 	cfg *config.Config,
-	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) *SendOrderHandler {
 	handlerLogger := logger.With("component:NewSendOrderHandler", "SendOrderHandler")
+	sendQueue := make(chan *entities.Job, cfg.RateLimit)
 	return &SendOrderHandler{
 		SendOrderService: sendOrderService,
 		Cfg:              cfg,
 		Logger:           handlerLogger,
-		sendQueue:        queue,
-		mu:       &sync.RWMutex{},
+		sendQueue:        sendQueue,
+		mu:               &sync.RWMutex{},
 	}
 }
 
 func (h *SendOrderHandler) SendUserOrders() error {
-	pollTicker := time.NewTicker(h.Cfg.PollInterval)
-	defer pollTicker.Stop()
+	ctx := context.Background()
+	timer := time.NewTimer(h.Cfg.PollInterval)
+	defer timer.Stop()
 
 	var wg sync.WaitGroup
 	for range make([]struct{}, h.Cfg.RateLimit) {
 		wg.Add(1)
-		go h.worker(&wg)
+		go h.worker(ctx, &wg, timer)
 	}
 
-	go func() {
-		ctx := context.Background()
-		for range pollTicker.C {
-			newOrders, err := h.SendOrderService.GetFreshOrders(ctx, h.Cfg.AgentOrderLimit)
-			if err != nil {
-				h.Logger.Infof("Error getting new orders: %v\n", err)
-				continue
-			}
-
-			for i := range newOrders {
-				order := &newOrders[i]
-				h.sendQueue <- order
+	select {
+	case <-ctx.Done():
+		h.Logger.Info("Shutting down gracefully...")
+		return nil
+	case <-timer.C:
+		jobs, err := h.SendOrderService.GetPendingJobs(ctx, h.Cfg.AgentOrderLimit)
+		if err != nil {
+			h.Logger.Errorf("Failed to get jobs: %v", err)
+			timer.Reset(h.Cfg.PollInterval)
+			break
+		}
+		if len(jobs) == 0 {
+			timer.Reset(h.Cfg.PollInterval)
+			break
+		}
+		for _, job := range jobs {
+			select {
+			case h.sendQueue <- &job:
+			case <-ctx.Done():
+				return nil
 			}
 		}
-	}()
+	}
 
 	wg.Wait()
 	close(h.sendQueue)
@@ -69,22 +78,23 @@ func (h *SendOrderHandler) SendUserOrders() error {
 	return nil
 }
 
-func (h *SendOrderHandler) worker(wg *sync.WaitGroup) {
+func (h *SendOrderHandler) worker(ctx context.Context, wg *sync.WaitGroup, timer *time.Timer) {
 	defer wg.Done()
 
-	for order := range h.sendQueue {
-		ctx := context.Background()
+	for job := range h.sendQueue {
 		h.mu.Lock()
-		err := h.SendOrderService.SendOrder(ctx, order)
+		err := h.SendOrderService.SendOrder(ctx, job)
 		h.mu.Unlock()
 
 		if err != nil {
 			var tooManyReqErr *accrual.TooManyRequestsWithRetryError
 			if errors.As(err, &tooManyReqErr) {
 				h.Logger.Infof("Слишком много запросов, пауза %d секунд\n", tooManyReqErr.RetryAfter)
-				time.Sleep(time.Duration(tooManyReqErr.RetryAfter) * time.Second)
+				after := time.Duration(tooManyReqErr.RetryAfter) * time.Second
+				timer.Reset(after)
+				<-timer.C
 			} else {
-				h.Logger.Infof("Failed to send order %d: %v\n", order.OrderID, err)
+				h.Logger.Infof("Failed job with order id %d: %v\n", job.OrderID, err)
 			}
 		}
 	}

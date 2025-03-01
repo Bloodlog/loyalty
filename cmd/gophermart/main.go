@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"gophermart/internal/app/command"
-	"gophermart/internal/app/entities"
 	"gophermart/internal/config"
 	"gophermart/internal/logger"
 	"gophermart/internal/server"
@@ -38,14 +37,12 @@ func run(loggerZap *zap.SugaredLogger) error {
 		return fmt.Errorf("database error: %w", err)
 	}
 
-	sendQueue := make(chan *entities.Order, cfg.RateLimit)
-
 	go func() {
-		if err := command.ConfigureSendOrderHandler(storeDB.Pool, cfg, sendQueue, loggerZap); err != nil {
+		if err = command.ConfigureSendOrderHandler(storeDB.Pool, cfg, loggerZap); err != nil {
 			log.Panicln(err)
 		}
 	}()
-	if err := server.ConfigureServerHandler(storeDB.Pool, cfg, sendQueue, loggerZap); err != nil {
+	if err = server.ConfigureServerHandler(storeDB.Pool, cfg, loggerZap); err != nil {
 		log.Panicln(err)
 	}
 	return nil

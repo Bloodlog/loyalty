@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS withdraws (
     order_number BIGINT NOT NULL UNIQUE,
     user_id INT NOT NULL,
     withdraw FLOAT NOT NULL,
-    created_at TIMESTAMP DEFAULT now(),
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

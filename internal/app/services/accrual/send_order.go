@@ -30,9 +30,9 @@ func (e *TooManyRequestsWithRetryError) Error() string {
 	return fmt.Sprintf("too many requests (429), retry after %d seconds", e.RetryAfter)
 }
 
-func SendOrder(client *resty.Client, orderID int64) (*OrderResponse, error) {
+func SendOrder(client *resty.Client, orderID int) (*OrderResponse, error) {
 	resp, err := client.R().
-		Get("/api/orders/" + strconv.Itoa(int(orderID)))
+		Get("/api/orders/" + strconv.Itoa(orderID))
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order: %w", err)

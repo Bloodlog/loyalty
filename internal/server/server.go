@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"gophermart/internal/app/entities"
 	"gophermart/internal/config"
 	"gophermart/internal/routers"
 	"net/http"
@@ -15,10 +14,9 @@ import (
 func ConfigureServerHandler(
 	db *pgxpool.Pool,
 	cfg *config.Config,
-	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) error {
-	router := routers.ConfigureServerHandler(db, cfg, queue, logger)
+	router := routers.ConfigureServerHandler(db, cfg, logger)
 	logger.Infoln("Start http server: ", cfg.HTTPAddress)
 	err := http.ListenAndServe(cfg.HTTPAddress, router)
 	if err != nil {

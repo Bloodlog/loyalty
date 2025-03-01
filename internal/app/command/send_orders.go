@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"gophermart/internal/app/entities"
 	"gophermart/internal/app/handlers"
 	"gophermart/internal/app/repositories"
 	"gophermart/internal/app/services"
@@ -16,13 +15,13 @@ import (
 func ConfigureSendOrderHandler(
 	db *pgxpool.Pool,
 	cfg *config.Config,
-	queue chan *entities.Order,
 	logger *zap.SugaredLogger,
 ) error {
 	client := accrual.NewClient(cfg.AccrualAddress, cfg.AgentTimeoutClient)
 	orderRepository := repositories.NewOrderRepository(db)
-	sendOrdersService := services.NewAccrualService(orderRepository, client, cfg, logger)
-	sendOrderHandler := handlers.NewSendOrderHandler(sendOrdersService, cfg, queue, logger)
+	jobRepository := repositories.NewJobRepository(db)
+	sendOrdersService := services.NewAccrualService(db, jobRepository, orderRepository, client, cfg, logger)
+	sendOrderHandler := handlers.NewSendOrderHandler(sendOrdersService, cfg, logger)
 	logger.Infoln("Start accrual agent interval:", cfg.PollInterval)
 	err := sendOrderHandler.SendUserOrders()
 	if err != nil {
