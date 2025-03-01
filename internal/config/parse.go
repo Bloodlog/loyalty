@@ -8,11 +8,10 @@ import (
 )
 
 const (
-	defaultAgentTimeout        = 10 * time.Second
 	defaultAuthTokenExpiration = 3 * time.Hour
-	defaultPollInterval        = time.Minute
-	defaultAgentOrderLimit     = 5
-	defaultAgentRetry          = 30 * time.Second
+	defaultPollInterval        = 6 * time.Second
+	defaultAgentOrderLimit     = 1
+	defaultAgentTimeout        = 2 * time.Second
 )
 
 func ParseFlags() (*Config, error) {
@@ -52,7 +51,6 @@ func ParseFlags() (*Config, error) {
 		RateLimit:          rateLimit,
 		AgentTimeoutClient: agentTimeoutClient,
 		AgentOrderLimit:    agentOrderLimit,
-		AgentDefaultRetry:  defaultAgentRetry,
 	}, nil
 }
 
