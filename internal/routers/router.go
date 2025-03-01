@@ -47,7 +47,7 @@ func registerAPIRouter(
 
 	userService := services.NewUserService(userRepo)
 	orderService := services.NewOrderService(db, orderRepo, jobRepo)
-	balanceService := services.NewBalanceService(userRepo, orderRepo, withdrawRepo)
+	balanceService := services.NewBalanceService(db, userRepo, orderRepo, withdrawRepo)
 	jwtService := services.NewJwtService(cfg)
 
 	userHandler := handlers.NewUserHandler(userService, jwtService, logger)

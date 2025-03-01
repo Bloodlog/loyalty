@@ -10,6 +10,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	pgx "github.com/jackc/pgx/v5"
 )
 
 // MockWithdrawRepositoryInterface is a mock of WithdrawRepositoryInterface interface.
@@ -65,16 +66,16 @@ func (mr *MockWithdrawRepositoryInterfaceMockRecorder) GetTotalWithdrawByUserID(
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTotalWithdrawByUserID", reflect.TypeOf((*MockWithdrawRepositoryInterface)(nil).GetTotalWithdrawByUserID), ctx, userID)
 }
 
-// StoreAndUpdateBalance mocks base method.
-func (m *MockWithdrawRepositoryInterface) StoreAndUpdateBalance(ctx context.Context, withdraw entities.Withdraw) error {
+// Save mocks base method.
+func (m *MockWithdrawRepositoryInterface) Save(ctx context.Context, tx pgx.Tx, withdraw entities.Withdraw) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreAndUpdateBalance", ctx, withdraw)
+	ret := m.ctrl.Call(m, "Save", ctx, tx, withdraw)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// StoreAndUpdateBalance indicates an expected call of StoreAndUpdateBalance.
-func (mr *MockWithdrawRepositoryInterfaceMockRecorder) StoreAndUpdateBalance(ctx, withdraw interface{}) *gomock.Call {
+// Save indicates an expected call of Save.
+func (mr *MockWithdrawRepositoryInterfaceMockRecorder) Save(ctx, tx, withdraw interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreAndUpdateBalance", reflect.TypeOf((*MockWithdrawRepositoryInterface)(nil).StoreAndUpdateBalance), ctx, withdraw)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockWithdrawRepositoryInterface)(nil).Save), ctx, tx, withdraw)
 }

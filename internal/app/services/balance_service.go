@@ -10,6 +10,9 @@ import (
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type BalanceService interface {
@@ -19,6 +22,7 @@ type BalanceService interface {
 }
 
 type balanceService struct {
+	Pool               *pgxpool.Pool
 	UserRepository     repositories.UserRepositoryInterface
 	OrderRepository    repositories.OrderRepositoryInterface
 	WithdrawRepository repositories.WithdrawRepositoryInterface
@@ -26,12 +30,14 @@ type balanceService struct {
 }
 
 func NewBalanceService(
+	db *pgxpool.Pool,
 	userRepository repositories.UserRepositoryInterface,
 	orderRepository repositories.OrderRepositoryInterface,
 	withdrawRepository repositories.WithdrawRepositoryInterface,
 ) BalanceService {
 	const roundingFactor = 100
 	return &balanceService{
+		Pool:               db,
 		UserRepository:     userRepository,
 		OrderRepository:    orderRepository,
 		WithdrawRepository: withdrawRepository,
@@ -78,7 +84,15 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.
 }
 
 func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.WithdrawBody) error {
-	current, err := o.UserRepository.GetBalanceByUserID(ctx, nil, int64(userID))
+	tx, err := o.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+
+	current, err := o.UserRepository.GetBalanceByUserID(ctx, tx, int64(userID))
 	if err != nil {
 		return fmt.Errorf("failed GetBalanceByUserID: %w", err)
 	}
@@ -100,9 +114,31 @@ func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.Withd
 		OrderID:  int(number),
 		Withdraw: roundedAmount,
 	}
-	err = o.WithdrawRepository.StoreAndUpdateBalance(ctx, withdrawOrder)
+
+	err = o.WithdrawRepository.Save(ctx, tx, withdrawOrder)
 	if err != nil {
 		return fmt.Errorf("failed to save Withdraw: %w", err)
+	}
+
+	if withdrawOrder.Withdraw > 0 {
+		var currentBalance float64
+		currentBalance, err = o.UserRepository.GetBalanceByUserID(ctx, tx, withdrawOrder.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to get current balance for user %d: %w", withdrawOrder.UserID, err)
+		}
+		newBalance := currentBalance - withdrawOrder.Withdraw
+		err = o.UserRepository.UpdateBalanceByUserID(ctx, tx, newBalance, withdrawOrder.UserID)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to update user balance for user %d: %w",
+				withdrawOrder.UserID,
+				err,
+			)
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

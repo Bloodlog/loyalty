@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"gophermart/internal/app/apperrors"
@@ -17,9 +16,9 @@ import (
 )
 
 type WithdrawRepositoryInterface interface {
-	StoreAndUpdateBalance(ctx context.Context, withdraw entities.Withdraw) error
 	GetTotalWithdrawByUserID(ctx context.Context, userID int) (float64, error)
 	GetByUserID(ctx context.Context, userID int) ([]entities.Withdraw, error)
+	Save(ctx context.Context, tx pgx.Tx, withdraw entities.Withdraw) error
 }
 
 type withdrawRepository struct {
@@ -32,20 +31,12 @@ func NewWithdrawRepository(db *pgxpool.Pool) WithdrawRepositoryInterface {
 	}
 }
 
-func (r *withdrawRepository) StoreAndUpdateBalance(ctx context.Context, withdraw entities.Withdraw) error {
-	tx, err := r.Pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		_ = tx.Rollback(ctx)
-	}(tx, ctx)
-
+func (r *withdrawRepository) Save(ctx context.Context, tx pgx.Tx, withdraw entities.Withdraw) error {
 	query := `
 		INSERT INTO withdraws (order_number, user_id, withdraw)
 		VALUES ($1, $2, $3)
 	`
-	_, err = tx.Exec(ctx, query, withdraw.OrderID, withdraw.UserID, withdraw.Withdraw)
+	_, err := tx.Exec(ctx, query, withdraw.OrderID, withdraw.UserID, withdraw.Withdraw)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
@@ -53,38 +44,6 @@ func (r *withdrawRepository) StoreAndUpdateBalance(ctx context.Context, withdraw
 		}
 		return fmt.Errorf("failed to save withdraw: %w", err)
 	}
-
-	if withdraw.Withdraw > 0 {
-		queryGetBalance := `
-	        SELECT COALESCE(balance, 0)
-	        FROM users
-	        WHERE id = $1
-	    `
-		var currentBalance sql.NullFloat64
-		err = tx.QueryRow(ctx, queryGetBalance, withdraw.UserID).Scan(&currentBalance)
-		if err != nil {
-			return fmt.Errorf("failed to get current balance for user %d: %w", withdraw.UserID, err)
-		}
-		newBalance := currentBalance.Float64 - withdraw.Withdraw
-		queryUser := `
-			UPDATE users
-			SET balance = $1
-			WHERE id = $2
-		`
-		_, err = tx.Exec(ctx, queryUser, newBalance, withdraw.UserID)
-		if err != nil {
-			return fmt.Errorf(
-				"failed to update user balance for user %d: %w",
-				withdraw.UserID,
-				err,
-			)
-		}
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	return nil
 }
 
@@ -131,7 +90,7 @@ func (r *withdrawRepository) GetByUserID(ctx context.Context, userID int) ([]ent
 		withdraws = append(withdraws, withdraw)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to get withdraw: %w", err)
 	}
 

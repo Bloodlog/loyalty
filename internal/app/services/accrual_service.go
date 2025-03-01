@@ -21,7 +21,6 @@ import (
 
 type AccrualService interface {
 	SendOrder(ctx context.Context, job *entities.Job) error
-	GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error)
 	GetPendingJobs(ctx context.Context, limit int) ([]entities.Job, error)
 }
 
@@ -56,14 +55,6 @@ func NewAccrualService(
 		Logger:          logger,
 		roundingFactor:  roundingFactor,
 	}
-}
-
-func (a *accrualService) GetFreshOrders(ctx context.Context, limit int) ([]entities.Order, error) {
-	orders, err := a.OrderRepository.GetFreshOrders(ctx, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to GetFreshOrders: %w", err)
-	}
-	return orders, nil
 }
 
 func (a *accrualService) SendOrder(ctx context.Context, job *entities.Job) error {
