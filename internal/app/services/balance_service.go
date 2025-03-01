@@ -41,7 +41,7 @@ func NewBalanceService(
 
 func (o *balanceService) GetBalance(ctx context.Context, userID int) (dto.BalanceResponseBody, error) {
 	var balanceResponse dto.BalanceResponseBody
-	current, err := o.UserRepository.GetBalanceByUserID(ctx, userID)
+	current, err := o.UserRepository.GetBalanceByUserID(ctx, nil, int64(userID))
 	if err != nil {
 		return balanceResponse, fmt.Errorf("failed GetBalance: %w", err)
 	}
@@ -78,7 +78,7 @@ func (o *balanceService) GetWithdrawals(ctx context.Context, userID int) ([]dto.
 }
 
 func (o *balanceService) Withdraw(ctx context.Context, userID int, req dto.WithdrawBody) error {
-	current, err := o.UserRepository.GetBalanceByUserID(ctx, userID)
+	current, err := o.UserRepository.GetBalanceByUserID(ctx, nil, int64(userID))
 	if err != nil {
 		return fmt.Errorf("failed GetBalanceByUserID: %w", err)
 	}

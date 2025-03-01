@@ -19,8 +19,17 @@ func ConfigureSendOrderHandler(
 ) error {
 	client := accrual.NewClient(cfg.AccrualAddress, cfg.AgentTimeoutClient)
 	orderRepository := repositories.NewOrderRepository(db)
+	userRepository := repositories.NewUserRepository(db)
 	jobRepository := repositories.NewJobRepository(db)
-	sendOrdersService := services.NewAccrualService(db, jobRepository, orderRepository, client, cfg, logger)
+	sendOrdersService := services.NewAccrualService(
+		db,
+		jobRepository,
+		orderRepository,
+		userRepository,
+		client,
+		cfg,
+		logger,
+	)
 	sendOrderHandler := handlers.NewSendOrderHandler(sendOrdersService, cfg, logger)
 	logger.Infoln("Start accrual agent interval:", cfg.PollInterval)
 	err := sendOrderHandler.SendUserOrders()

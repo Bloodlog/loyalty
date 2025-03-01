@@ -4,7 +4,7 @@ import (
 	"context"
 	"gophermart/internal/app/dto"
 	"gophermart/internal/app/entities"
-	"gophermart/internal/app/mocks"
+	"gophermart/internal/app/repositories/mocks"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"

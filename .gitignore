@@ -30,3 +30,5 @@ golangci-lint
 gophermarttest-darwin-arm64
 
 golangci.yml
+
+coverage.out

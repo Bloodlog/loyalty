@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"gophermart/internal/app/apperrors"
@@ -143,33 +142,6 @@ func (r *orderRepository) UpdateOrder(ctx context.Context, tx pgx.Tx, order *ent
 	_, err = tx.Exec(ctx, query, order.StatusID, order.Accrual, order.OrderID)
 	if err != nil {
 		return fmt.Errorf("failed to update order %d: %w", order.OrderID, err)
-	}
-
-	if order.Accrual.Valid && order.Accrual.Float64 > 0 {
-		queryGetBalance := `
-	        SELECT COALESCE(balance, 0)
-	        FROM users
-	        WHERE id = $1
-	    `
-		var currentBalance sql.NullFloat64
-		err = tx.QueryRow(ctx, queryGetBalance, order.UserID).Scan(&currentBalance)
-		if err != nil {
-			return fmt.Errorf("failed to get current balance for user %d: %w", order.UserID, err)
-		}
-		newBalance := currentBalance.Float64 + order.Accrual.Float64
-		queryUser := `
-			UPDATE users
-			SET balance = $1
-			WHERE id = $2
-		`
-		_, err = tx.Exec(ctx, queryUser, newBalance, order.UserID)
-		if err != nil {
-			return fmt.Errorf(
-				"failed to update user balance for user %d: %w",
-				order.UserID,
-				err,
-			)
-		}
 	}
 
 	return nil

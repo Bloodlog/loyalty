@@ -56,3 +56,24 @@ migrate:
 	        -path=/migrations \
 	        -database postgresql://gopher:gopher@postgres:5432/gophermart?sslmode=disable \
 	        down -all
+
+mock:
+	mockgen -source=internal/app/repositories/order_repository.go \
+		-destination=internal/app/repositories/mocks/order_repository_mock.go \
+		-package=mocks
+	mockgen -source=internal/app/repositories/user_repository.go \
+		-destination=internal/app/repositories/mocks/user_repository_mock.go \
+		-package=mocks
+	mockgen -source=internal/app/repositories/job_repository.go \
+		-destination=internal/app/repositories/mocks/job_repository_mock.go \
+		-package=mocks
+	mockgen -source=internal/app/repositories/withdraw_repository.go \
+		-destination=internal/app/repositories/mocks/withdraw_repository_mock.go \
+		-package=mocks
+
+go-test:
+	go test ./...
+
+go-test-cover:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -func=coverage.out
