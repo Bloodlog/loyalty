@@ -21,3 +21,14 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+.DS_Store
+internal/.DS_Store
+.fleet
+
+golangci-lint
+
+gophermarttest-darwin-arm64
+
+golangci.yml
+
+coverage.out
